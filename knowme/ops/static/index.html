@@ -1,0 +1,79 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>知研</title>
+<!-- 主题得在**第一次绘制之前**定下来，否则会先闪一下亮色再翻成暗色。
+     这一小段只做这一件事：把上次选的那一档写回 <html> 上的 data-theme。
+     切换本身在 main.js 的 toggleTheme 里，样式在 style.css 的 :root。 -->
+<script>try{var t=localStorage.getItem("knowme_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="/static/style.css"></head><body>
+<nav id="nav">
+  <div class="brand-block">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">知</div>
+      <div class="brand-copy">
+        <div class="brand-name">知研</div>
+        <div class="brand-tag">个人 Agent</div>
+      </div>
+      <!-- 动作按钮放在字标这一行：theme-toggle 的图标由 main.js 的
+           paintThemeButton 按当前档位改写；nav-toggle 在最右，收栏动作
+           贴着窗口边缘。 -->
+      <div class="brand-actions">
+        <button id="theme-toggle" title="切换亮/暗" aria-label="切换亮/暗">&#9789;</button>
+        <button id="nav-toggle" title="隐藏侧栏" aria-label="隐藏侧栏">&#10094;</button>
+      </div>
+    </div>
+    <button class="brand-model" type="button" data-route="models" title="点击切换模型">
+      <span class="brand-model-dot"></span>
+      <small id="model">读取模型…</small>
+      <span class="brand-model-arrow">&#8250;</span>
+    </button>
+  </div>
+  <div class="grp">Agents</div>
+  <!-- Clicking an agent NAVIGATES to #agent/<id> (openAgent), it no longer just
+       swaps the contents of a side column. Back button works because of that. -->
+  <button class="agent-link" data-agent="default"><span class="agent-icon">✦</span><span>General</span><i></i></button>
+  <button class="agent-link" data-agent="research"><span class="agent-icon">◎</span><span>Research</span><i></i></button>
+  <button class="agent-link" data-agent="health"><span class="agent-icon">✚</span><span>Health</span><i></i></button>
+  <!-- No Reader entry here: the reader agent only exists in the reader's own ask
+       panel (ASK_AGENT = "reader" in reader.js). Listing it among the Agents
+       suggested a fifth chat you can open, which is not what it is. Its profile,
+       notes and history are untouched. -->
+  <div class="grp">Applications</div>
+  <a href="#reader" data-v="reader">阅读器 · 文档库</a>
+  <a href="#knowledge" data-v="knowledge">知识库</a>
+  <a href="#deepresearch" data-v="deepresearch">深度研究</a>
+  <a href="#health" data-v="health">健康 · 训练</a>
+  <!-- Three groups you actually see: what you talk to (Agents), what you work in
+       (Applications), and the system itself — 系统: how it is doing (总览/运维) and
+       how it is set up (行为/模型/连接). The three used to be split across a
+       "Manage" group and a "设置" group, which left 总览/运维/行为 looking like they
+       belonged to Applications (their own group headers were hidden, see
+       style.css) and buried 模型/连接 below the fold. -->
+  <div class="grp">Management</div>
+  <a href="#overview" data-v="overview">总览</a>
+  <a href="#ops" data-v="ops">运维 <span class="n" id="n-ops"></span></a>
+  <a href="#memory" data-v="memory">记忆管理 <span class="n" id="n-mem"></span></a>
+  <a href="#settings" data-v="settings">行为</a>
+  <a href="#models" data-v="models">模型</a>
+  <a href="#connections" data-v="connections">连接</a>
+  <!-- The runtime internals. `deep` = deep-linkable but NOT in the sidebar:
+       they are where you go from a link in a page, not from the nav. -->
+  <div class="grp deep">运行</div>
+  <a href="#gateway" data-v="gateway">网关 <span class="n" id="n-gw"></span></a>
+  <a href="#loop" data-v="loop">循环 <span class="n" id="n-loop"></span></a>
+  <a href="#graph" data-v="graph">图工作流 <span class="n" id="n-graph"></span></a>
+  <a href="#tools" data-v="tools">工具 <span class="n" id="n-tools"></span></a>
+  <a href="#database" data-v="database">数据库 <span class="n" id="n-db"></span></a>
+</nav>
+<div class="resizer" id="nav-resizer" title="拖动调整侧栏宽度"></div>
+<main>
+  <header class="pagehead">
+    <h1 id="title">总览</h1>
+    <div class="sub" id="sub"></div>
+  </header>
+  <div id="view"></div>
+</main>
+<button id="nav-reopen" title="显示侧栏">&#9776;</button>
+<!-- One native module owns loading and bootstrapping the feature bundles. -->
+<script type="module" src="/static/js/bootstrap.js"></script>
+</body></html>

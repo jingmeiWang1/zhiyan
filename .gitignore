@@ -1,0 +1,62 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Local configuration and runtime data
+.env
+.env.*
+!.env.example
+.knowme/
+.knowme-*/
+.knowme.bak-*/
+.knowme.prerename-bak/
+state.db
+traces/
+knowme_workspace/
+*.ics
+
+# Credentials created by optional integrations
+credentials.json
+client_secret*.json
+*token*.json
+.gcp/
+
+# Local-only project notes and helper files
+.claude/
+AGENTS.md
+Claude.md
+CURRENT_PROGRESS.md
+IMPLEMENTATION_COMPLETE.md
+read.md
+scripts/
+examples/
+docs/DEVELOPMENT.md
+docs/MVP_GUIDE.md
+docs/FRONTEND_READER_MVP.md
+docs/context-management-plan.md
+docs/context-compression-vs-isolation.md
+docs/personal_agent_workspace_product_plan.md
+docs/README.md
+docs/kimi-k3-explained.md
+docs/architecture-whiteboard.png
+knowme/ops/README.md
+
+# A separate local screenshot set; published screenshots live in docs/images/
+/images/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated real-model benchmark outputs
+evals/agent_benchmark/results/
+evals/agent_benchmark/RESULTS_*.md
