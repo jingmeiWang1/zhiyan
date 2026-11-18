@@ -1,8 +1,8 @@
-# 知研 (KnowMe)
+# 知研 
 
 **一个无框架、可扩展的 Personal Agent Platform。**
 
-知研（KnowMe）用原生 Python 实现 Agent Loop、会话、上下文管理、记忆、工具调度和运行轨迹，再把这些能力组合成不同的 Agent 与 Application。它以本地数据为中心，提供文档阅读、Agent 自主检索的 RAG、研究笔记和健康管理工作区。
+知研用原生 Python 实现 Agent Loop、会话、上下文管理、记忆、工具调度和运行轨迹，再把这些能力组合成不同的 Agent 与 Application。它以本地数据为中心，提供文档阅读、Agent 自主检索的 RAG、研究笔记和健康管理工作区。
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![uv](https://img.shields.io/badge/package%20manager-uv-DE5FE9)](https://docs.astral.sh/uv/)
@@ -17,7 +17,7 @@
 
 ## 为什么是一个 Platform
 
-KnowMe 的核心不是某一个固定助手，而是一套可以反复组合的个人 Agent 运行底座：
+知研 的核心不是某一个固定助手，而是一套可以反复组合的个人 Agent 运行底座：
 - **Agents** 每个 Agent 由提示词、工具范围、模型、上下文策略和运行预算组成，共用同一个 `AgentRuntime`。
 - **Application** Application 可以维护文档、选区、项目文件等页面状态，再通过 Context Bridge 把当前工作现场交给 Agent。
 - **运行过程可视化。** 一轮对话里的记忆门控、上下文压缩、模型迭代、工具调用、工作流节点、耗时和 Token 都会进入 Web 时间线。
