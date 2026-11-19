@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
-from knowme.config import Settings
-from knowme.core.session import Session
+from zhiyan.config import Settings
+from zhiyan.core.session import Session
 
 
 class _Memory:
@@ -30,7 +30,7 @@ def _session(tmp_path, memory=None) -> Session:
 def test_empty_extra_is_byte_identical(tmp_path, monkeypatch):
     session = _session(tmp_path)
     fixed = SimpleNamespace(astimezone=lambda: __import__("datetime").datetime(2026, 9, 20, 10, 0))
-    monkeypatch.setattr("knowme.core.session.datetime",
+    monkeypatch.setattr("zhiyan.core.session.datetime",
                         SimpleNamespace(now=lambda: fixed))
     assert session.build_turn_context("hi") == session.build_turn_context("hi", extra="")
 
@@ -45,7 +45,7 @@ def test_extra_lands_after_memory(tmp_path):
 
 def test_runtime_passes_extra_through(tmp_path):
     """run_loop_turn hands extra_context to the session and the prompt shows it."""
-    from evals.helpers import ScriptedClient, make_knowme, response, text_block
+    from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
 
     seen = {}
 
@@ -56,7 +56,7 @@ def test_runtime_passes_extra_through(tmp_path):
             return super()._create(**kwargs)
 
     gate = response([text_block('{"retrieve": false, "query": "", "reason": "x"}')])
-    app = make_knowme(tmp_path / "home", client=Client([gate, response([text_block("ok")])]))
+    app = make_zhiyan(tmp_path / "home", client=Client([gate, response([text_block("ok")])]))
     r = app.runtime.run_turn(app.spec, app.session, "what is this?",
                              extra_context="[app: reader]\nDocument: notes.md")
     assert r.reply == "ok"
@@ -67,10 +67,10 @@ def test_runtime_passes_extra_through(tmp_path):
 
 
 def test_facade_passes_application_context_and_emits_transparent_events(tmp_path):
-    from evals.helpers import ScriptedClient, make_knowme, response, text_block
+    from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
 
     gate = response([text_block('{"retrieve": false, "query": "", "reason": "x"}')])
-    app = make_knowme(
+    app = make_zhiyan(
         tmp_path / "home",
         client=ScriptedClient([gate, response([text_block("ok")])]),
     )

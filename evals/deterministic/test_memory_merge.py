@@ -4,8 +4,8 @@ There is no "Agent boundary" for memory any more — the facts are one shared
 pool, so a merge across two Agents' rows is an ordinary merge. Conversations
 are the thing that stays per-Agent; test_multi_agent_workspace.py pins that."""
 
-from knowme.db import connect
-from knowme.memory.semantic.store import SqliteFactStore
+from zhiyan.db import connect
+from zhiyan.memory.semantic.store import SqliteFactStore
 
 
 def test_fact_merge_keeps_target_and_removes_source(tmp_path):
@@ -49,8 +49,8 @@ def test_dashboard_merge_action_does_not_care_which_agent_is_selected(tmp_path, 
     """The dashboard still requires an agent_id (it names the workspace you are
     looking at), but memory actions act on the one shared pool, so the merge
     lands whoever is selected — and lands exactly once."""
-    from knowme.config import Settings
-    from knowme.ops import web
+    from zhiyan.config import Settings
+    from zhiyan.ops import web
 
     settings = Settings(home=tmp_path)
     settings.ensure_home()

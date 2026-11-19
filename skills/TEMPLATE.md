@@ -4,8 +4,8 @@ description: One sentence saying what this skill does AND when to use it — the
 ---
 
 <!--
-To use it yourself: drop it at <KNOWME_HOME>/skills/<your-skill-name>/SKILL.md
-(that is .knowme/skills/... unless you moved your home), or `knowme skill install
+To use it yourself: drop it at <ZHIYAN_HOME>/skills/<your-skill-name>/SKILL.md
+(that is .zhiyan/skills/... unless you moved your home), or `zhiyan skill install
 <url-of-this-file>`. The loader needs the frontmatter above — name + description,
 the official Anthropic Agent Skills format — because it matches user messages
 against those words.

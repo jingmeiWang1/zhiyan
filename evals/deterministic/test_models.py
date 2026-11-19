@@ -2,12 +2,12 @@ import os
 from types import SimpleNamespace
 
 import pytest
-from knowme.loop import models
+from zhiyan.loop import models
 
 from evals.helpers import HAS_KEY
-from knowme.config import Settings
+from zhiyan.config import Settings
 
-RUN_LIVE_EVALS = os.getenv("KNOWME_RUN_LIVE_EVALS") == "1"
+RUN_LIVE_EVALS = os.getenv("ZHIYAN_RUN_LIVE_EVALS") == "1"
 
 
 def test_xai_grok_provider_uses_expected_key_endpoint_and_models(monkeypatch, tmp_path):
@@ -34,14 +34,14 @@ def test_openai_default_is_tool_capable(tmp_path):
     """Regression: bare 'gpt-5.6' isn't callable, and the gpt-5.6 REASONING
     variants (luna/sol/terra) can't use function tools on /v1/chat/completions
     (they 400). The default must be a NON-reasoning, tool-capable chat model."""
-    from knowme.loop.models import PROVIDERS
+    from zhiyan.loop.models import PROVIDERS
     assert PROVIDERS["openai"].model == "gpt-5.5"
     assert PROVIDERS["openai"].default_pair() == ["gpt-5.5", "gpt-4.1-mini"]
 
 
 def test_no_default_model_is_a_moving_alias():
     """The whole gpt-5.x-chat-latest line went 404 at once (issue #132), and
-    knowme shipped a default pointing into it. An alias is what made that a silent
+    zhiyan shipped a default pointing into it. An alias is what made that a silent
     break rather than a caught one: the id in the repo never changed, so nothing
     local could tell it had stopped resolving.
 
@@ -50,7 +50,7 @@ def test_no_default_model_is_a_moving_alias():
     under you because the name quietly started meaning something else. Catching
     an actual deprecation needs the live probe below.
     """
-    from knowme.loop.models import PROVIDERS
+    from zhiyan.loop.models import PROVIDERS
 
     offenders = [f"{name}: {m}"
                  for name, prov in PROVIDERS.items()
@@ -62,17 +62,17 @@ def test_no_default_model_is_a_moving_alias():
 
 
 @pytest.mark.skipif(not (HAS_KEY and RUN_LIVE_EVALS),
-                    reason="set KNOWME_RUN_LIVE_EVALS=1 and configure an API key to run live evals")
+                    reason="set ZHIYAN_RUN_LIVE_EVALS=1 and configure an API key to run live evals")
 def test_openai_defaults_still_resolve_live():
     """The only check that can catch a deprecation, because only the provider
     knows. Calls both defaults in the exact shape OpenAICompatClient._to_openai
     sends — chat.completions WITH a function tool attached — because that is the
     combination gpt-5.6-luna passes as a bare call and 400s on.
 
-    Off by default; `make gate` with KNOWME_RUN_LIVE_EVALS=1 is where this bites.
+    Off by default; `make gate` with ZHIYAN_RUN_LIVE_EVALS=1 is where this bites.
     """
     import openai
-    from knowme.loop.models import PROVIDERS
+    from zhiyan.loop.models import PROVIDERS
 
     key = os.getenv("OPENAI_API_KEY")
     if not key:
@@ -92,7 +92,7 @@ def test_gemini_thought_signature_round_trips():
     REQUIRE it echoed back next turn, or the follow-up 400s. The OpenAI-compat
     adapter must capture it on parse (_create) and put it back on serialize
     (_to_openai). Verified end-to-end without a network call."""
-    from knowme.loop.models import OpenAICompatClient
+    from zhiyan.loop.models import OpenAICompatClient
 
     client = OpenAICompatClient.__new__(OpenAICompatClient)   # skip __init__ (no network)
     sig = {"google": {"thought_signature": "ABC123"}}
@@ -149,7 +149,7 @@ def test_minimax_provider_uses_expected_key_endpoint_and_models(monkeypatch, tmp
 
     monkeypatch.setenv("MINIMAX_API_KEY", "test-minimax-key")
     monkeypatch.delenv("MINIMAX_BASE_URL", raising=False)
-    monkeypatch.delenv("KNOWME_BASE_URL", raising=False)
+    monkeypatch.delenv("ZHIYAN_BASE_URL", raising=False)
     monkeypatch.setitem(
         __import__("sys").modules,
         "anthropic",

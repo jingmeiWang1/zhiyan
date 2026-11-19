@@ -1,4 +1,4 @@
-# knowme-agent — one command per pillar.
+# zhiyan-agent — one command per pillar.
 #
 # Make is not a framework — it's a 45-year-old command shortcut tool that
 # ships with every Mac/Linux. Each target below is just the shell command
@@ -17,19 +17,19 @@ PY := $(firstword $(wildcard .venv/bin/python .venv/Scripts/python.exe) python)
 .PHONY: run brief web trace eval eval-judge gate lint
 
 run:            ## open the local web client (the same thing `make web` does)
-	$(PY) -m knowme
+	$(PY) -m zhiyan
 
 brief:          ## morning briefing from calendar + mail + memory (as a LOOP)
-	$(PY) -m knowme brief
+	$(PY) -m zhiyan brief
 
 gather:         ## same job as a GRAPH: 4 sources in parallel, then one digest
-	$(PY) -m knowme gather
+	$(PY) -m zhiyan gather
 
 # The server holds the Web package in memory: static JS/CSS reload on refresh,
 # but Python routes do NOT. After pulling a change that touches web/ (or any
 # imported module), stop this and re-run it, or the UI shows stale backend data.
 web:            ## local web client — http://localhost:8888 on Windows
-	$(PY) -m knowme.ops.web
+	$(PY) -m zhiyan.ops.web
 
 trace:          ## deep trace waterfalls (Phoenix) at http://localhost:6006
 	$(PY) -m phoenix.server.main serve
@@ -41,9 +41,9 @@ eval-judge:     ## LLM-as-judge evals (scored %, needs an API key)
 	$(PY) -m pytest -q evals/judge
 
 gate:           ## the release gate: deterministic must pass, judge must clear threshold
-	$(PY) -m knowme.ops.release_gate
+	$(PY) -m zhiyan.ops.release_gate
 
 # No `scripts`: an empty directory cannot be tracked by git, so a fresh clone has
 # no such path and ruff exits with E902 "cannot find the file".
 lint:
-	$(PY) -m ruff check knowme evals
+	$(PY) -m ruff check zhiyan evals

@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 JS = (Path(__file__).resolve().parents[2]
-      / "knowme" / "ops" / "static" / "js")
+      / "zhiyan" / "ops" / "static" / "js")
 MAIN_JS = JS / "main.js"
 # The Reader moved out of main.js into its own file when it grew a document
 # library and a PDF renderer. render() stayed put — the harness slices it out of
@@ -232,7 +232,7 @@ pendingTests.push((function testReaderPane() {
     assert(els["rc-content"].innerHTML.includes("para one"),
            "the document is painted from its extracted text");
     assert(els["rc-title"].textContent === "alpha", "the pane header names the document");
-    assert(storage["knowme_reader_open_doc"] === "d1",
+    assert(storage["zhiyan_reader_open_doc"] === "d1",
            "opening a document remembers its id for the next page load");
     await restoreReaderState();          // settle the one-time library fetch
 
@@ -337,7 +337,7 @@ pendingTests.push((function testReaderPane() {
     await readerDelete("d2");
     assert(els["rc-content"].innerHTML.includes("选一份文档"), "the empty state is shown");
     assert(els["rc-content"].dataset.stamp === "", "the empty state clears the stamp");
-    assert(!("knowme_reader_open_doc" in storage),
+    assert(!("zhiyan_reader_open_doc" in storage),
            "deleting the open document forgets it (a reload must not chase a dead id)");
     // …and takes it OFF THE BRIDGE. The snapshot used to be write-only, so an
     // agent went on "seeing" a document you had closed or deleted hours ago.
@@ -386,7 +386,7 @@ pendingTests.push((function testReaderPane() {
     assert(extras.filter(p => p.action === "clear").length === clearsBefore + 2,
            "关闭文档把两个键都从桥上撤掉（和 publish 用同一份目标清单）");
     assert(els["rc-content"].innerHTML.includes("选一份文档"), "关掉就回到空态");
-    assert(!("knowme_reader_open_doc" in storage), "…并且不再记住它");
+    assert(!("zhiyan_reader_open_doc" in storage), "…并且不再记住它");
     assert(els["ra-title"].textContent === "还没有打开文档", "面板也说没有打开文档了");
   })();
 })());

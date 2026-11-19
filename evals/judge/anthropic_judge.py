@@ -1,5 +1,5 @@
 """A DeepEval judge model backed by the same Anthropic-compatible endpoint
-KnowMe itself uses — no separate OpenAI key needed for judging.
+Zhiyan itself uses — no separate OpenAI key needed for judging.
 
 DeepEval calls generate() with an optional pydantic schema when it wants
 structured verdicts; we ask the model for JSON and validate it back.
@@ -10,9 +10,9 @@ from __future__ import annotations
 import json
 
 from deepeval.models import DeepEvalBaseLLM
-from knowme.loop.models import get_client
+from zhiyan.loop.models import get_client
 
-from knowme.config import load_settings
+from zhiyan.config import load_settings
 
 
 class AnthropicJudge(DeepEvalBaseLLM):

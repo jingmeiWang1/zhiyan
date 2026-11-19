@@ -1,6 +1,6 @@
 # 开发指南
 
-KnowMe 是一个无框架的 Personal Agent Platform。Agent Loop、会话、上下文、记忆和工具系统都由项目自己实现；不同 Agent 与 Application 在这套公共运行时上组合能力。
+知研 是一个无框架的 Personal Agent Platform。Agent Loop、会话、上下文、记忆和工具系统都由项目自己实现；不同 Agent 与 Application 在这套公共运行时上组合能力。
 
 这份文档只说明当前代码如何运行和扩展，不记录开发过程日志。
 
@@ -10,26 +10,26 @@ KnowMe 是一个无框架的 Personal Agent Platform。Agent Loop、会话、上
 
 ```bash
 uv sync --extra dev
-uv run knowme
+uv run zhiyan
 ```
 
-模型服务商和 API Key 可以在 Web 的“模型”页面配置。`.env`、`.knowme/`、运行轨迹和本机凭证都不能提交。
+模型服务商和 API Key 可以在 Web 的“模型”页面配置。`.env`、`.zhiyan/`、运行轨迹和本机凭证都不能提交。
 
 ## 代码阅读顺序
 
-1. `knowme/core/spec.py`：一个 Agent 可以声明哪些差异。
-2. `knowme/agents/catalog.py`：内置 Agent 如何组合提示词和工具。
-3. `knowme/core/runtime.py`：一次完整 Turn 如何装配。
-4. `knowme/core/loop.py`：模型与工具之间的原生循环。
-5. `knowme/core/session.py`：会话历史、恢复和持久化。
-6. `knowme/core/context/`：工具结果预算、裁剪和状态摘要。
-7. `knowme/memory/`：记忆门控、存储、整理和技能。
-8. `knowme/applications/context_bridge.py`：Application 如何把页面状态交给 Agent。
-9. `knowme/ops/web/` 与 `knowme/ops/static/`：Web API、SSE 和原生前端。
+1. `zhiyan/core/spec.py`：一个 Agent 可以声明哪些差异。
+2. `zhiyan/agents/catalog.py`：内置 Agent 如何组合提示词和工具。
+3. `zhiyan/core/runtime.py`：一次完整 Turn 如何装配。
+4. `zhiyan/core/loop.py`：模型与工具之间的原生循环。
+5. `zhiyan/core/session.py`：会话历史、恢复和持久化。
+6. `zhiyan/core/context/`：工具结果预算、裁剪和状态摘要。
+7. `zhiyan/memory/`：记忆门控、存储、整理和技能。
+8. `zhiyan/applications/context_bridge.py`：Application 如何把页面状态交给 Agent。
+9. `zhiyan/ops/web/` 与 `zhiyan/ops/static/`：Web API、SSE 和原生前端。
 
 ## 新增 Agent
 
-Agent 是 `AgentSpec`，不是一套新的运行时代码。通常只需要在 `knowme/agents/catalog.py` 中增加一个 `AgentProfile`：
+Agent 是 `AgentSpec`，不是一套新的运行时代码。通常只需要在 `zhiyan/agents/catalog.py` 中增加一个 `AgentProfile`：
 
 ```python
 AgentProfile(
@@ -58,10 +58,10 @@ Application 是带状态的工作界面。Reader 会发布当前文档和选区�
 
 新增 Application 时按下面的边界组织：
 
-1. 在 `knowme/applications/` 中实现领域逻辑和数据操作。
-2. 在 `knowme/ops/web/server.py` 与 `data.py` 中增加明确的 API。
-3. 在 `knowme/ops/static/js/` 中增加页面和交互，并在 `bootstrap.js` 中登记模块。
-4. 需要 Agent 理解当前页面时，通过 `ApplicationContextBridge.publish()` 发布有界的纯文本快照。**不是每个 Application 都要发**：页面上没有"Agent 自己拉不到"的现场状态时就别发（健康页就是这种，见下面那一节）。
+1. 在 `zhiyan/applications/` 中实现领域逻辑和数据操作。
+2. 在 `zhiyan/ops/web/server.py` 与 `data.py` 中增加明确的 API。
+3. 在 `zhiyan/ops/static/js/` 中增加页面和交互，并在 `bootstrap.js` 中登记模块。
+4. 需要 Agent 理解当前页面时，通过 `ApplicationContextBridge.publish()` 发布有界的纯文本快照。**不是每个 Application 都要发**：页面上没有"Agent 自己拉不到"的现场状态时就别发。
 5. 发起对话时，用 `ApplicationContextBridge.render()` 的结果作为 `extra_context`，不要把前端对象直接传进 Core。
 6. 为页面状态隔离、上下文长度边界和 API 行为补确定性测试。
 
@@ -69,17 +69,17 @@ Application 的持久数据应该进入自己的存储；Context Bridge 只保�
 
 ## 新增 Tool
 
-1. 在 `knowme/tools/` 中实现工具，保持输入和输出容易测试。
-2. 在 `knowme/tools/__init__.py` 中注册 `Tool` 和参数 Schema。
+1. 在 `zhiyan/tools/` 中实现工具，保持输入和输出容易测试。
+2. 在 `zhiyan/tools/__init__.py` 中注册 `Tool` 和参数 Schema。
 3. 如果工具只属于某些 Agent，把名称加入对应的工具白名单。
 4. 给成功、失败和权限边界补确定性测试。
 5. 如果工具会访问外部服务，在 `SECURITY.md` 中说明配置和数据流向。
 
 ## 前端约定
 
-Web 前端目前是原生 HTML、CSS 和 JavaScript，没有 Node 构建链。`knowme/ops/static/js/bootstrap.js` 按顺序加载各功能模块；新增模块时必须显式加入 `FEATURES`。
+Web 前端目前是原生 HTML、CSS 和 JavaScript，没有 Node 构建链。`zhiyan/ops/static/js/bootstrap.js` 按顺序加载各功能模块；新增模块时必须显式加入 `FEATURES`。
 
-修改静态文件后刷新页面即可看到结果；修改 Python 后端后需要重启 `uv run knowme`。
+修改静态文件后刷新页面即可看到结果；修改 Python 后端后需要重启 `uv run zhiyan`。
 
 两条容易踩的约定：
 
@@ -90,13 +90,13 @@ Web 前端目前是原生 HTML、CSS 和 JavaScript，没有 Node 构建链。`k
 
 阅读区（`#reader`）打开一份 PDF 时走两条路，各自的理由不同：
 
-**1. 文件本身走 HTTP Range 分块传（`knowme/ops/web/http_range.py`）**
+**1. 文件本身走 HTTP Range 分块传（`zhiyan/ops/web/http_range.py`）**
 
 `GET /api/library/file` 支持 `Range`，答 200 / 206 / 416。这条不是优化而是前提：pdf.js 是从**文件末尾**开始读的（先 trailer，再 xref，再一页一页取），而它只有在响应里看到 `Accept-Ranges: bytes` 时才会去试 Range。不支持 Range 的服务器上，pdf.js 只能把整份文件下下来——900 页 PDF 就是几十 MB。
 
 `parse_range()` 是纯函数，三态必须分清：`None` = 忽略这个头、整个文件返回；元组 = 206 那一段；`RangeError` = 416。**最要紧的是别把"要不到"答成 200**：那等于让客户端为了一个字节下 20 MB。
 
-**2. 页面靠虚拟化渲染（`knowme/ops/static/js/reader.js`）**
+**2. 页面靠虚拟化渲染（`zhiyan/ops/static/js/reader.js`）**
 
 打开时**立刻给每一页建一个占位元素**（高度先用第 1 页的比例估），所以滚动条从第一秒就是对的、`pdfJumpTo(n)` 只是对偏移量做算术、不需要渲染中间的页。然后由 `IntersectionObserver` 驱动 `pdfEnsureWindow()`——**"画哪几页、放掉哪几页"只有这一个决策点**：视野内缺的 `pdfRenderPage()`，出视野的 `pdfReleasePage()`（占位高度不还，所以释放不会让正在读的那一页跳走）。缩放同理：重画的是屏幕上那两三页，不是已渲染的全部。
 
@@ -115,8 +115,8 @@ Web 前端目前是原生 HTML、CSS 和 JavaScript，没有 Node 构建链。`k
 
 **检索是 Agent 手上的一个工具，不是页面上的一块面板。** Reader agent 有
 `semantic_search`（按意思找）和 `search_documents`（按字面找），它自己判断该不该调、
-调哪个——所以 `knowme/rag/` 里**没有**任何负责"生成答案"的代码，回答由调工具的同一个模型写。
-`knowme/rag/` 七个文件，各管一段：
+调哪个——所以 `zhiyan/rag/` 里**没有**任何负责"生成答案"的代码，回答由调工具的同一个模型写。
+`zhiyan/rag/` 七个文件，各管一段：
 
 | 文件 | 干什么 |
 |---|---|
@@ -128,13 +128,13 @@ Web 前端目前是原生 HTML、CSS 和 JavaScript，没有 Node 构建链。`k
 | `rerank.py` | 候选 → 相关性分。可选的一层，配了才用（见下面「重排」） |
 | `query.py` | 检索（`semantic_search`），工具和页面都调它 |
 
-**怎么开**：`KNOWME_EMBED_PROVIDER` + `KNOWME_EMBED_MODEL` 都填上才算开
+**怎么开**：`ZHIYAN_EMBED_PROVIDER` + `ZHIYAN_EMBED_MODEL` 都填上才算开
 （例如 `local_ollama` / `bge-m3`）。本地 ollama：`ollama pull bge-m3`，
 再把 `local_ollama` 这个自定义服务商指向 `http://127.0.0.1:11434/v1`。
 **两个都空 = 功能整个关着**：不建表、不索引，行为与加这个功能之前一字不差。
 
 **GPU 不用我们管**：ollama 自己探硬件、自己决定跑 GPU 还是 CPU，还会在两者之间切
-（`ollama ps` 会打印 `100% GPU` / `37%/63% CPU/GPU`）。KnowMe 这边没有可检测的东西，
+（`ollama ps` 会打印 `100% GPU` / `37%/63% CPU/GPU`）。知研 这边没有可检测的东西，
 检索那点余弦是纯 Python、零点几毫秒。**别为这件事写代码。**
 
 ### 切块：为什么是"结构优先、尺寸兜底"
@@ -215,7 +215,7 @@ Web 前端目前是原生 HTML、CSS 和 JavaScript，没有 Node 构建链。`k
 向量检索先捞 30 条候选  →  reranker 逐条打分  →  返回分数最高的 6 条
 ```
 
-**怎么开**：`KNOWME_RERANK_PROVIDER` + `KNOWME_RERANK_MODEL` 两个都填上才算开，
+**怎么开**：`ZHIYAN_RERANK_PROVIDER` + `ZHIYAN_RERANK_MODEL` 两个都填上才算开，
 和 embedding 那条一模一样的规矩。**两个都空 = 不加这一层，检索顺序和以前一字不差**
 （向量检索要多少条就给多少条，`RECALL` 这个数根本不会被问到）。
 
@@ -288,14 +288,14 @@ REACT 那篇 11 万字，它会拿前 22% 当全文回答，而且理直气壮�
 **没有人递给 research 一份文档**，所以它得先看库里有什么、再自己去读；Reader 是一上来
 就有当前打开的那篇。
 
-工具一个都没新写——`knowme/tools/documents.py` 里早就有，只是没进 research 的白名单。
+工具一个都没新写——`zhiyan/tools/documents.py` 里早就有，只是没进 research 的白名单。
 
 ## 工具结果：模型收到的那一份必须是文本
 
 `Tool.fn` 声明 `-> str`，但**不是每个工具都守约**：`list_notes` / `search_notes` /
 `list_folders` / `get_linked_notes` 返回 Python 列表，`get_note` 返回 dict。
 
-`knowme/core/loop.py` 原来把工具返回值**原样**塞进 `tool_result`，只在写记录时用
+`zhiyan/core/loop.py` 原来把工具返回值**原样**塞进 `tool_result`，只在写记录时用
 `as_text()` 转一遍。于是一个返回列表的工具跑完，下一轮请求里就出现这样的消息：
 
 ```json
@@ -322,7 +322,7 @@ REACT 那篇 11 万字，它会拿前 22% 当全文回答，而且理直气壮�
 Coding Workspace 不要了，所以是**连根删**，不是把它藏进菜单：`coding` 这个 Agent Profile、
 侧栏入口、`#coding` 那一页的 js 与 css、`applications/coding_workspace.py`（项目/文件/改动的
 领域逻辑）、`applications/coding_verify.py`（改完自动跑验收）、`applications/coding_runs.py`
-（每次改动的收据）、`tools/coding.py`（KnowMe 自己那套读写文件的工具），以及
+（每次改动的收据）、`tools/coding.py`（知研 自己那套读写文件的工具），以及
 `core/runtime.py` 里"改完验收、没过再修一轮"那个重试循环，全部删掉。
 
 **`delegate_task` 跟着一起走了，这一条最反直觉**：它看着像"另一条线"（把编程活交给本机装的
@@ -342,247 +342,122 @@ pi / claude / codex CLI 去干），但它的开关就是 Coding 页上那几个
    不出来（`import` 写在函数体里面，是惰性的），只有真跑才炸。删功能时先在干净树上跑一次
    全量测试，比 grep 一遍 import 更可靠。
 2. **`#agent/<已经不存在的 id>` 这条老路本来就有一个小毛病，和删 Coding 无关。**
-   如果 localStorage 里存的就是那个已经不存在的 id（`knowme_active_agent`），
+   如果 localStorage 里存的就是那个已经不存在的 id（`zhiyan_active_agent`），
    `chat.js` 的 `recoverUnknownAgent()` 会把人送回 General，这条路是好的。
    但如果 localStorage 里存的是一个**还活着**的 agent，而网址里是
    `#agent/不存在的id`，那么 `selectAgent()` 会**静默拒绝**（它只接受 `D.agents` 里有的 id），
    于是网址和页面标题对不上，页面显示的是上一个 agent 的会话。拿一个从来不存在的 id
    （`#agent/zzz-nope`）试，现象一模一样 —— 所以这是老问题，不是这轮弄出来的，**这轮没动它**。
 
-## 健康 · 训练（应用）
+## 学习应用（考试备考 / 语言学习）
 
-一个 Application，**六张表、五个分页签**：**手账（默认）/ 训练 / 身体指标 / 目标与计划 / 食物库**。
-页面在 `#health`，数据全在 `.knowme/state.db` 里，表是**第一次用到时才建**
-（`applications/health.py` 的 `_ensure_table`），所以老库不需要迁移、全新的 home 也能直接用。
+学习功能有两条轨道，共用一套数据与复习内核。改之前先分清这两件事：
 
-### 六张表，和四个想清楚了才定的形状
+| | 考试备考 `exam` | 语言学习 `language` |
+| --- | --- | --- |
+| 计划 | 到考试日的单元覆盖，预留复习缓冲 | 每日配比：新词 / 复习 / 听力 / 口语 / 阅读 / 写作 |
+| 卡片 | `qa` / `cloze` | `vocab` / `dictation` / `translation` / `grammar` / `cloze` |
+| 度量 | 覆盖率、单元完成度、正确率 | 活跃词、成熟词、目标词量覆盖、练习分钟 |
+| Agent | Exam Coach | Language Tutor |
 
-| 表 | 一行是什么 | 为什么这样 |
-|---|---|---|
-| `health_metrics` | 某天某个指标的一条记录（date, metric, value, unit, note） | **键值对，不是固定列**：指标会加（体重/体脂/腰围/静息心率/睡眠…），固定列每加一个就得改表。`metric` **只认 `METRICS` 这一个常量表**（页面上是下拉框）——不然"体重"和"体重(kg)"会撕成两条互不相干的趋势线 |
-| `health_workouts` | 某天做的一个动作（sets × reps × weight + rpe） | 不拆到"每一组"：绝大多数记录就是这个粒度，更细的写在 note 里 |
-| `health_meals` | 一顿里的一个食物（food, grams, kcal, 蛋白, 碳水, 脂肪都可以空） | 当日合计 = `GROUP BY date`（每餐小计再 `GROUP BY date, meal`） |
-| `health_targets` | **只有一行**（`CHECK (id = 1)`）的每日营养目标 | 用户要的是"我现在的目标"，不是"目标怎么变的"。所以 `INSERT … ON CONFLICT(id) DO UPDATE` 一条就够；要历史的话 `health_plans` 已经能干这件事。四项**全空也是合法状态**（= 没有目标） |
-| `health_foods` | 食物库里的一条（每 100 单位的热量和宏量） | 见下面「食物库」 |
-| `health_plans` | 一份计划的**一个版本**（slug, version, kind, items_json, status） | 见下 |
+### 模块
 
-**计划的"历史版本"不是另存一张表，是同一个 `slug` 的多行、`version` 递增。**
-`save_plan` 的时候：标题一样 → 同一个 slug，`version = 已有的最大值 + 1`，同时把旧的那一行
-置成 `archived`；标题不一样 → 另一条计划。**归档不是删除**，所以"上个月那份饮食计划是怎么写的"
-永远翻得回来。页面上生效的只有 `active` 那一版，历史版本在下面列一行元信息，点「看这一版」
-才去 `/api/health` 要它的条目 —— 版本会越攒越多，全塞进每 5 秒拉一次的 `/api/data` 是白花钱。
+| 位置 | 职责 |
+| --- | --- |
+| `zhiyan/applications/study.py` | 懒建 `study_*` 表；项目、资料、单元、计划、卡片、复习、音频、会话 |
+| `zhiyan/ops/study_cards.py` | 一次模型调用生成候选卡；原文引文校验；去重 |
+| `zhiyan/ops/study_language.py` | 词表解析/导入、写作批改、听写反馈 |
+| `zhiyan/tools/study.py` | 学习工具；每个项目级工具都按 `kind` 校验轨道 |
+| `zhiyan/agents/catalog.py` | `exam` / `language` 两个 AgentProfile |
+| `zhiyan/ops/web/data.py` | `study_info` 快照、`study_action`、音频上传 |
+| `zhiyan/ops/web/server.py` | `/api/study`、音频 GET/POST |
+| `zhiyan/ops/static/js/study.js` | `VIEWS.exam` / `VIEWS.language` 和复习播放器 |
 
-**可勾选的条目存在 `items_json` 一列里**（不是单独一张 `items` 表）。勾选只动**当前生效**
-那一行：`toggle_item` 先把整行读出来、改 JSON 里第 N 个、再写回去 —— 因为一次只有一个用户在
-改这一格，而"独立一张表"省下的那点原子性，换来的是每次读计划都要 JOIN 一遍。历史版本拒绝勾选
-（会直接报"这是历史版本，只能看不能勾"）。
+### 数据形状
 
-**这个文件做过一次迁移**（第一次）：`health_meals` 原本没有 `grams` 列，而"150 克的鸡胸肉"和
-"300 克的鸡胸肉"是两个数，光存热量那一行就永远说不清。加列走 `_add_missing_columns()` ——
-`PRAGMA table_info` 查缺哪一列、缺就 `ALTER TABLE … ADD COLUMN`。**老行得到的是 `NULL`（不知道），
-不是 0**，和这个应用其余部分一个规矩。有一条测试专门喂它一张"没有 grams 的老表"。
+- `study_projects`：`kind`、目标、考试日、每日分钟、每日新卡上限、`settings_json`。
+- `study_units`：`doc_id` + `ordinal` + `start_offset/end_offset` + `page_start/page_end`。
+  **偏移是对 `documents.content` 的精确区间**，不是估算。
+- `study_plans`：版本化；重排 = 旧版 `archived`、插入 `version+1`；`items_json` 里考试是
+  `unit_ids`，语言是每日配比的 `target`。
+- `study_cards`：候选/激活/暂停；`front/back/extra_json`；`source_doc_id/source_offset/source_quote`。
+- `study_reviews`：只追加。`review_date` 是本地日历日；`prev_reps` 用来计算“今天已经引入几张新卡”。
+- `study_audio`：文件在 `.zhiyan/study/audio/<uuid><suffix>`，文件名永不用用户输入。
+- `study_sessions`：听力/口语/写作/阅读的练习分钟，不参与 SRS。
 
-### 一条贯穿始终的规矩：不知道 ≠ 0
+### 单元提取
 
-热量、宏量、组数、重量，**都可以留空**。留空是"不知道"，存进去是 `NULL`，页面上显示 `—`。
+- Markdown：复用 `zhiyan/rag/chunk.py` 的 `_sections()`，标题路径作为单元标题。
+- PDF：`reader.parse_pages()` 取每页文本，重建 `documents.content` 并核对；一致才用页码，
+  不一致退化为按段落并返回 warning。超长页/段落用 `_split_units` 再切。
+- 短行大纲：每个非空行一个单元。
+- 有卡片引用时，`extract_units()` 拒绝重建，避免 `source_doc_id` 悬空。
 
-最要紧的是**合计**：只要那一组里有**一条**记录没填某一项，那一项的合计就是 `None`（页面显示
-`—`），并另给一个 `kcal_unknown` 说明有几条没填 —— **绝不会把未知当成 0 加进去**。
+### 排期
 
-这一条原来只在热量上是干净的，宏量上**有个洞**：判断写成 `row["protein"] is None`，而
-`SUM(protein)` 会跳过 `NULL` 行 —— 所以"三顿里有一顿没填蛋白、热量倒是齐全"时，那天会报一个
-**偏小的蛋白数**，看起来很有把握但是错的。这一轮把它抽成 `_totals_one()`，热量和宏量共用同一条
-判断，并且加了一条测试钉住它。（训练的总容量只累加三项都填了的行，也是同一条规矩。）
+- `build_exam_plan()`：`exam_date - start + 1` 天；预留最后约 20%（至少 1 天）为复习/缓冲；
+  单元按顺序装进每天 `daily_minutes`；`coverage = scheduled / required`，写进计划 note。
+- `build_language_plan()`：14 天滚动模板；有考试日时按剩余天数提高新词量，受
+  `new_cards_per_day` 上限约束；覆盖率写进 note。
+- `replan()`：保留今天的 items，从明天重建；考试项目的 `horizon_end` 仍是考试日。
+- 计划日期和 `due` 都是**本地日历日**，不是 UTC 时间戳。
 
-### 第一屏是按天的手账
+### 卡片生成
 
-参照市面上的记食 App（薄荷健康那类）和训记：**日期条 + 能量环 + 记一笔 + 每餐一张卡 + 当天训练
-摘要**。身体指标、计划、食物库都退到子标签里。
+`ops/study_cards.generate_cards()` 是 Web 动作和 Agent 工具的唯一入口：
 
-- **日期条**：`◀ 2026-10-08 ▶` + 「回到今天」。它能往前翻多远**由服务端说**——
-  `health_info["windows"]` 把三个窗口（指标 120 天 / 训练 60 天 / 饮食 30 天）一起发下来，
-  页面拿它算下界、到了边界就把 `◀` 禁掉并写「只保留最近 30 天」。**这条不是洁癖**：翻过那条线
-  以后"这一天还没有记录"就不再是"那天没吃"，而是"我没把你那天的数据拿下来"——两种情况的说法
-  必须不一样，不然页面在骗人。
-- **能量环**：手写 SVG（`C = 2πr`，`stroke-dasharray="C"` + `stroke-dashoffset="C×(1−p)"`，
-  `rotate(-90)` 从 12 点起画），**不引图表库**。三种降级都是有意写的：
-  没设目标 → 只画轨道、写「还没设目标」并链到「目标与计划」；这天**一条都没记** → 写
-  「还没有记录」；记了但**有一条没填热量** → 写「算不出来」+「N 顿没填热量」。
-  后两种是两句不同的话，都不能变成一个假的百分比。
-- **环上没有「已消耗」那一行**，也**没有**任何运动消耗估算。那要从 MET 表 + 体重 + 时长去估，
-  估出来的数和实际差得很远，而"不知道 ≠ 0"是这一页的底线 —— 编一个数比不显示更糟。
-- **记一笔**分三档：**选食物**（分类片 + 搜索框，在内存里那 100 条上筛，敲一个字不发请求）→
-  选中之后展开一条"待记"行：**克数** + 自动算出的四格（`round(每100值 × 克数 ÷ 100, 1)`，
-  **可以改**，比如只吃了一半）+ 餐次下拉（默认按钟点猜：<10 早餐、<15 午餐、<21 晚餐、其余加餐）；
-  **手动填**（库里没有也懒得建的）；**新建**（搜不到时把它建进食物库，然后直接进入"待记"状态）。
-- **每餐的小计来自服务端**（`meal_totals(conn, days)`），**不在前端重算**。"一条没填就不是合计"
-  这条规矩只能有一个实现 —— 不然两个决定点迟早分家（这个项目已经栽过好几次）。
-- **训练**：按天分组，每一行是一个动作，旁边一列是**上次做它**的样子。`hpLastBefore()` 是一个
-  **纯函数**：在已经拿到的那 60 天里找 `(date, id)` **严格早于**当前行的、同一个动作的最近一条。
-  找不到就写「**这 60 天里没有更早的记录**」——**不写"第一次做"**，因为我们只加载了 60 天，
-  那会是一句我们不知道真假的话。上一行没记全就写「没记全」，不拿 `NULL` 当 0。
+1. 取单元原文（上限 6000 字），调用摘要模型返回 JSON。
+2. 每条必须有 `source_quote`；先精确查找，再折叠空白查找；找不到就拒收。
+3. `study.add_card()` 再按项目 `kind` 校验 card_type，并写为 `candidate`。
+4. 去重按 `front` 的归一化文本；听写卡按 `audio_id` 去重。
 
-### 食物库和每日目标
+**不要把 `source_quote` 校验删掉。** 模型很容易编一句看起来像原文的话；一张带假出处的卡
+比没有卡更糟，因为它看起来可以核对。
 
-**食物库**（`applications/food_data.py` 里约 120 条种子）：数值都是**每 100 单位**，分七类
-（主食/肉蛋奶/蔬菜/水果/饮品/零食/其他），`unit` 有 `g` 也有 `ml`（牛奶按 100ml 更自然）。
+### 工具与 Agent
 
-- **种子只在表为空时插一次**（`SELECT COUNT(*)`）。不然 `/api/data` 每 5 秒插 120 行。
-  代价写在这里：以后往种子里加东西，**老用户看不到**，得让他在页面上新建或手动清空那张表。
-- **数值是参考值，会有个别错的**，所以界面上说清楚了，而且**内置的也能改、能删**。改一个内置
-  食物**不会**把它的 `custom` 变成 1 —— 标错的历史仍然是历史，而且"自建的那些排前面"这条
-  排序还得靠它。
-- **删一个食物不影响已经记下的饭**。那些行是**当时的快照**（数值 + 克数），不是外键。所以
-  "我改错了刚才那条，回去改食物库"**不会**把过去改掉 —— 要改就改那条记录本身。
-- 重名不覆盖：报「食物库里已经有一个叫「x」的了，改它就行」，免得悄悄改掉别人正在用的数值。
+`zhiyan/tools/study.py` 的工具按项目 kind 隔离：
 
-**每日目标**是那张单行表。手账那个环就是照着它画的（`set_target`），所以健康 Agent 定完饮食计划
-要顺手把它写进去 —— **环读的是这张表，不是计划里的散文**。留空 = 这一项没设，四项都空 = 没有目标。
+- 语言专属：`extract_vocab`、`import_vocab`、`create_dictation`、`language_progress`。
+- 考试/语言共用：`study_overview`、`study_plan`、`list_units`、`read_unit`、
+  `create_cards`、`list_cards`、`mark_unit`、`replan_study`。
+- `mark_unit` 是写操作，提示词要求只在用户明确说“学完了”时调用；不要根据聊天内容推断。
 
-### 前端（`static/js/health.js`）
+### Web 与前端
 
-五个分页签用现成的 `.subtabs`。三个坑值得记（都在文件开头的注释里）：
+- `/api/data` 的 `study_info` 只给摘要：项目、今日议程、到期/新卡数、资料、音频元信息、
+  卡片计数、计划版本。**不下发卡片正文和 transcript。**
+- 读动作（`plan`、`list_units`、`list_cards`、`list_audio`、`review_queue`、`read_unit`）
+  返回 `result`；写动作返回 `data` 快照，页面直接替换 `D.study_info`。
+- `study.js` 的复习播放器用 `studyPaintReview()` 直接写 `#view`。这是故意的：
+  `main.js` 的轮询守卫在 `studyReviewing` 为真时跳过重建，普通 `render()` 也会被跳过。
+- 动态生成的 `onclick` 必须保留字面量函数名，否则 `bootstrap.js` 的导出扫描看不到它。
+  `studyMixAction()` 就是为此存在（不要改回对象间接调用）。
 
-1. **录入表单要 `onfocus="markEditing()"`。** `main.js` 的 `render()` 里有一条守卫：
-   `editing` 为真时不重建 `#view` —— 否则你正填到一半的那一行会被 5 秒轮询抹掉。守卫的条件里
-   带了 `!subChanged`，所以切分页签（那是导航）照常重建。
-2. **每个动作写完必须 `editing = false;` 再 `refresh()`。** 反过来了：列表、合计、环都烤在
-   `#view` 的 HTML 里，你不放下 `editing`，守卫就会一直拦着重建 —— 看起来就像"点了没反应"。
-   这一条在 `hpPost()` 里只写了一次，所有动作都走它。**`hpShiftDay()`（点 ◀ ▶ 换天）也算"动作"**：
-   不放下 `editing`，点箭头那天根本不会变，看起来就像按钮坏了。
-3. **只重画一小块的动作不许 `refresh()`**：`healthTrendPick()`（换趋势指标）、`hpPickFood()` /
-   `hpFoodQuery()` / `hpFoodCatPick()`（选食物、筛食物）、`hpRecalc()`（改克数重算四格）。
-   整页刷新会把你正在填的表单清空。反过来，这些纯重画路径里**也不许清 `editing`**，否则
-   "不重建"的守卫会在下一次轮询时失效。
+### 测试
 
-### 这一页**没有**自己的对话面板
+- `test_study_store.py`：懒建表、单元偏移、PDF 页码、两种排期、SM-2、复习日志、音频路径。
+- `test_study_cards.py`：伪造引文拒收、重复去重、轨道隔离、模型失败返回文本。
+- `test_study_language.py`：三种词表格式、导入去重、写作批改、听写映射。
+- `test_study_tools.py`：无数据提示、计划/单元读取、跨轨道拒绝、候选卡不自动确认。
+- `test_study_web.py`：`/api/study` 动作、`/api/data` 紧凑性、音频上传。
+- `test_study_frontend.py`：两个 VIEWS、今日/计划/词汇/听力、复习翻面与评分、poll 守卫。
 
-阅读器那一页有一个，是因为它要绑"正在读的是哪一篇"这种**只属于页面**的状态。健康页没有这种东西：
-指标、训练、饮食、目标、食物库全在库里，健康 Agent 用自己的工具就能读到。所以这一版就把它做成普通
-的侧栏 agent（`#agent/health`），页面上只放一个「问健康 Agent →」按钮，不加对话管道，也不往
-Context Bridge 里 publish 一份数据（那是把同一个事实存两个来源，还要吃 bridge 那 24,000 字的截断）。
-
-### 怎么验的
-
-`.claude/probe_health_ui.py` 跑真服务器 + 真 Chrome，用**一个全新的 home**（顺手验惰性建表），
-每一条断言都尽量落在**数据库**或**页面真的渲染出来的字节**上，不落在像素上：
-
-- 搜「鸡胸」→ 选它 → 填 150g → 四格自己变成 `199.5 / 46.5 / 0 / 5.4` → 保存后 **`health_meals`
-  里真的是 `grams=150, kcal=199.5`**；
-- 环的百分比是**从 DOM 的 `stroke-dashoffset` 读的**，不是从屏幕上的字猜的
-  （断言 `offset == dash × (1 − 已摄入/目标)`）；
-- 超标 → 弧画满（`dashoffset == 0`）且环和数字的颜色都等于**浏览器解析出来的 `--bad`**
-  （`getPropertyValue('--bad')` 回来的是字面量 `light-dark(...)`，没解析 —— 要拿一个真的用了
-  它的元素去问）；
-- 记一条没填热量的 → 环写「算不出来」而且**一根弧都不画**，那一餐的小计也是「算不出来」；
-- 点 ◀ 回昨天 → 日期条真的变了、四张餐卡全空、**今天那条没跟着跑过来**；
-- 训练页两次深蹲 → 后一条写「上次 10-01 · 5×5 @ 100kg」，第一条写「这 60 天里没有更早的记录」；
-- 食物库把一个内置食物的热量改成 200 → 回手账选它，算出来的是 **200**（证明改的是真库），
-  而且那一行的 `custom` 还是 0。
-
-反向验证（把修复改坏，看断言会不会红）做了两处，都是改在**内存里的副本**上再跑 node 桩：
-去掉 `hpShiftDay()` 里的 `editing = false` → **恰好一条红**；
-把 `hpLastBefore()` 里同一天的 `id <` 翻成 `id >` → 红的正好是讲"上次对比"的那两条，别的还绿。
-
-`evals/deterministic/test_health_store.py`（27 条，领域逻辑）+
-`test_health_tools.py`（15 条，Agent 工具）+
-`test_health_frontend.py`（node 桩跑真 `health.js`）是它的回归网。
-
-## 健康 Agent
-
-侧栏第三个 agent（`catalog.py` 里的 `health` profile，✚）。它管的就是上面那六张表，
-所以它和别的 agent 最大的不同是：**它有手**。别的 agent 读得多写得少，这一个你让它
-"记一下"它是真往库里写的。
-
-### 十一个工具（`knowme/tools/health.py`）
-
-读写分开，各自一个函数：
-
-| 读 | 写 |
-|---|---|
-| `health_overview`（不传参数，给最近 7/30 天的摘要**和今天还剩多少**） | `log_metric` |
-| `query_metrics(metric, days)` —— 原始点，画趋势用 | `log_workout` |
-| `query_workouts(days, exercise)` | `log_meal(…, grams)` |
-| `query_meals(days)` —— 记录 + 每日合计 | `save_plan(kind, title, items)` |
-| `list_plans(kind)` —— 各版本 + 状态 + 条目 | `set_target(kcal, protein, carbs, fat)` |
-| `search_food(query, category)` —— 食物库里每 100 单位的数值 | |
-
-**`search_food` 存在的理由只有一句**：用户说"我中午吃了 150 克鸡胸肉"，模型**必须自己算**
-（每 100 克的值 × 克数 ÷ 100），不能凭印象报一个热量。所以这个工具给出的是**每 100 单位的行
-和换算规则**，不替它算；查不到就明说「食物库里没有…**不要凭印象报热量**」。`health_overview`
-里那句"今天还剩多少"同理，是**手账那个环读的东西**（`set_target` 写的也是那张表）——
-所以定饮食计划的最后一步是调 `set_target`，而不是只在回复里写一段散文。
-
-三个当初想清楚才定下来的地方：
-
-**① 为什么要有 `health_overview` 这个"重复"的读工具。** 不带参数、一次就给出体重首尾与
-变化、训练次数与总容量、饮食日均、当前生效的计划标题。它存在的理由是**让对话从第一句就
-有东西可谈**：没有它，模型每开一个新话题都得先猜"我该查哪张表"，或者干脆凭印象开口。
-摘要里放的是"结论用的数字"，原始点仍然走 `query_*` —— 两者不重复，是粒度不同。
-
-**② 为什么读和写不合成一个 `health(action=...)`。** 模型看见的是每个工具的 description。
-把十一个动作塞进一个工具，它就得先记住十一个动作名才能问对问题；分成十一个，它看工具列表就
-知道能干什么。参数校验的成本也更低（一个工具一个 `_num`），代价只是工具列表长一点。
-
-**③ 每个数字都可能是 `—`。** 这是上层那条"不知道 ≠ 0"的规矩在工具这一侧的延续：
-`_num()` 把 `None` 渲染成 `—`，而 `query_meals` 在合计算不出来时会明说
-**"（合计里的 — 表示那天有记录没填这一项，所以合计算不出来，不是 0。）"**。工具不解释这个
-符号，模型就会把破折号读成"没数据"或者直接编一个数。同理，指标名写错时 `log_metric`
-返回的是"没记成：没有「体重(kg)」这个指标，可选的是：体重、体脂、…"——**原样说出用户
-写错的那个名字，再给可选清单**，模型才有可能自己改对重试。
-
-### 它的白名单里为什么还留着 `search_web`
-
-用户对这一个 agent 的原始要求是"制定计划不是无脑制定，需要一些科学研究的"。
-`search_web` + `read_webpage` 就是那个"先去查再看"。提示词里因此写死了一条：
-有争议的数字（蛋白质摄入量、训练频率）要查出依据并**说明出处**，**查不到就说这是常规做法
-而不是研究结论** —— 这两句话的区别，正是这个 agent 有没有价值的区别。
-
-它没有 `open_document`：文档库是 research / reader 的活，一个健康 agent 去读 PDF 只会
-把上下文喂满无关内容。
-
-### 它不是医生
-
-提示词里单独一段写死边界：伤病、用药、极端饮食 → 说清自己不是医生、建议找专业人士。
-这条不是客套：真浏览器里问"我膝盖疼该吃什么止痛药"，它会先说明超出范围，再列出**该去
-就医的信号**（撑不住体重、伸不直、打软腿、明显肿起…），最后才给挂号方向 —— 而不是给一个
-药名。
-
-### 怎么验的
-
-`.claude/probe_health_agent.py`：真服务器 + 真 Chrome + **真模型**，走用户实际会走的那条路
-（健康页那个「问健康 Agent →」按钮），聊三轮。**每个结论都从 `chat_log.meta.tools` 读，
-不从屏幕猜** —— 白名单里有 `health_overview` 不等于模型真的会调它：
-
-1. 问"这几天体重怎么样、这周练得如何" → meta 里是
-   `['health_overview','query_metrics','query_workouts']`，回答里的 71.6 / 71.8 / 72.4
-   就是库里那三行；
-2. 说"今早 70.9，帮我记一下" → meta 里是 `['log_metric']`，并且 `health_metrics`
-   **真的多了一行 70.9**（不是"它说它记了"）；
-3. 问止痛药 → 回答里有"我不是医生"和就医信号。
-
-第 2 条**第一次是假的：探针读早了。** 它只等"库里多一行"，而工具调用发生在回合结束
-**之前**，那一轮 assistant 行的 `meta` 还没写下来 ⇒ 读到的是**上一轮**的工具列表，
-于是报"写进去了、但不是 log_metric 写的"。改成两件事都等（库多了一行 **且** 这一轮的
-assistant 行落了库）才绿。**量具也会错** —— 这个项目已经在"PDF 页码""同一天记两次"
-之后第三次中同一枪了。
-
-`evals/deterministic/test_health_tools.py`（15 条）是它的回归网，重点不是"返回了一个
-字符串"，而是**返回文本里的数字就是库里的数字**，以及空库上不炸（否则每次开新对话
-第一句都是道歉）。
+真浏览器验证可以参照 `docs/demo/README.md` 的操作路径；种数据时用一个独立的
+`ZHIYAN_HOME`，不要把演示数据写进真实 `.zhiyan/`。
 
 ## 验证
 
 ```bash
-uv run ruff check knowme evals
+uv run ruff check zhiyan evals
 uv run python -m pytest -q evals/deterministic
 ```
 
-确定性测试使用 `ScriptedClient`，不能依赖网络、真实 API Key 或本机已有的 `.knowme` 数据。需要真实模型判断的测试位于 `evals/judge/`。
+确定性测试使用 `ScriptedClient`，不能依赖网络、真实 API Key 或本机已有的 `.zhiyan` 数据。需要真实模型判断的测试位于 `evals/judge/`。
 
 提交前再确认：
 
 - README 中的命令、链接和截图能在干净 checkout 中使用。
-- 没有提交 `.env`、API Key、OAuth Token、`.knowme/` 或 `traces/`。
+- 没有提交 `.env`、API Key、OAuth Token、`.zhiyan/` 或 `traces/`。
 - 修改没有顺手重构无关代码。
 - lint 和确定性测试都通过。

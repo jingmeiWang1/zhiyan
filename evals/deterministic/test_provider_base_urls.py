@@ -9,12 +9,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from knowme.loop import models
-from knowme.loop.models import PROVIDERS
+from zhiyan.loop import models
+from zhiyan.loop.models import PROVIDERS
 
-from knowme import integrations
-from knowme.config import Settings
-from knowme.ops import catalog
+from zhiyan import integrations
+from zhiyan.config import Settings
+from zhiyan.ops import catalog
 
 EXPECTED_ENDPOINTS = {
     "minimax": [
@@ -63,7 +63,7 @@ def test_client_uses_provider_specific_base_url(
     provider = PROVIDERS[provider_name]
     monkeypatch.setenv(provider.key_env, "test-key")
     monkeypatch.setenv(base_url_env, selected_url)
-    monkeypatch.delenv("KNOWME_BASE_URL", raising=False)
+    monkeypatch.delenv("ZHIYAN_BASE_URL", raising=False)
     monkeypatch.setitem(
         __import__("sys").modules,
         "anthropic",
@@ -105,10 +105,10 @@ def test_catalog_follows_selected_provider_region(
         return Response(json.dumps({"data": [{"id": "model-one"}]}).encode())
 
     provider = PROVIDERS[provider_name]
-    monkeypatch.setenv("KNOWME_PROVIDER", provider_name)
+    monkeypatch.setenv("ZHIYAN_PROVIDER", provider_name)
     monkeypatch.setenv(provider.key_env, "test-key")
     monkeypatch.setenv(base_url_env, selected_url)
-    monkeypatch.delenv("KNOWME_BASE_URL", raising=False)
+    monkeypatch.delenv("ZHIYAN_BASE_URL", raising=False)
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
     catalog._models_cache.clear()
 
@@ -137,15 +137,15 @@ def test_apply_provider_persists_scoped_base_url_and_clears_legacy_override(
     monkeypatch, tmp_path
 ):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / ".env").write_text("KNOWME_BASE_URL='https://legacy.example'\n")
-    monkeypatch.setenv("KNOWME_HOME", str(tmp_path / ".knowme"))
-    monkeypatch.setenv("KNOWME_PROVIDER", "minimax")
+    (tmp_path / ".env").write_text("ZHIYAN_BASE_URL='https://legacy.example'\n")
+    monkeypatch.setenv("ZHIYAN_HOME", str(tmp_path / ".zhiyan"))
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "minimax")
     monkeypatch.setenv("MINIMAX_API_KEY", "test-key")
-    monkeypatch.setenv("KNOWME_BASE_URL", "https://legacy.example")
+    monkeypatch.setenv("ZHIYAN_BASE_URL", "https://legacy.example")
     monkeypatch.delenv("MINIMAX_BASE_URL", raising=False)
     monkeypatch.setattr(integrations, "_provider_probe", lambda values: None)
 
-    from knowme.ops import browser_agent
+    from zhiyan.ops import browser_agent
 
     monkeypatch.setattr(browser_agent, "rebuild", lambda: None)
     tracer = SimpleNamespace(event=lambda *args: None)
@@ -157,13 +157,13 @@ def test_apply_provider_persists_scoped_base_url_and_clears_legacy_override(
 
     assert result.ok
     assert os.environ["MINIMAX_BASE_URL"] == "https://api.minimax.io/anthropic"
-    assert os.environ.get("KNOWME_BASE_URL", "") == ""
+    assert os.environ.get("ZHIYAN_BASE_URL", "") == ""
     contents = Path(".env").read_text(encoding="utf-8")
     assert "MINIMAX_BASE_URL='https://api.minimax.io/anthropic'" in contents
 
 
 def test_models_edit_modal_posts_selected_base_url():
-    source = Path("knowme/ops/static/js/models.js").read_text(encoding="utf-8")
+    source = Path("zhiyan/ops/static/js/models.js").read_text(encoding="utf-8")
 
     assert 'id="pm-base-url"' in source
     assert "payload.base_url = baseUrl" in source
@@ -179,16 +179,16 @@ def test_reusing_saved_provider_endpoint_skips_remote_probe_and_noop_rebuild(
 ):
     """Clicking either modal action with unchanged credentials stays local."""
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("KNOWME_HOME", str(tmp_path / ".knowme"))
-    monkeypatch.setenv("KNOWME_PROVIDER", current_provider)
+    monkeypatch.setenv("ZHIYAN_HOME", str(tmp_path / ".zhiyan"))
+    monkeypatch.setenv("ZHIYAN_PROVIDER", current_provider)
     monkeypatch.setenv("MOONSHOT_API_KEY", "saved-key")
     monkeypatch.setenv("MOONSHOT_BASE_URL", "https://api.moonshot.cn/anthropic")
-    monkeypatch.delenv("KNOWME_BASE_URL", raising=False)
+    monkeypatch.delenv("ZHIYAN_BASE_URL", raising=False)
 
     probes = []
     monkeypatch.setattr(integrations, "_provider_probe", lambda values: probes.append(values))
 
-    from knowme.ops import browser_agent
+    from zhiyan.ops import browser_agent
 
     rebuilds = []
     monkeypatch.setattr(browser_agent, "rebuild", lambda: rebuilds.append(True))
@@ -206,14 +206,14 @@ def test_reusing_saved_provider_endpoint_skips_remote_probe_and_noop_rebuild(
 
 def test_saving_noncurrent_provider_does_not_activate_or_rebuild(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("KNOWME_HOME", str(tmp_path / ".knowme"))
-    monkeypatch.setenv("KNOWME_PROVIDER", "minimax")
+    monkeypatch.setenv("ZHIYAN_HOME", str(tmp_path / ".zhiyan"))
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "minimax")
     monkeypatch.setenv("MOONSHOT_API_KEY", "saved-key")
     monkeypatch.setenv("MOONSHOT_BASE_URL", "https://api.moonshot.ai/anthropic")
-    monkeypatch.delenv("KNOWME_BASE_URL", raising=False)
+    monkeypatch.delenv("ZHIYAN_BASE_URL", raising=False)
     monkeypatch.setattr(integrations, "_provider_probe", lambda values: None)
 
-    from knowme.ops import browser_agent
+    from zhiyan.ops import browser_agent
 
     rebuilds = []
     monkeypatch.setattr(browser_agent, "rebuild", lambda: rebuilds.append(True))
@@ -225,6 +225,6 @@ def test_saving_noncurrent_provider_does_not_activate_or_rebuild(monkeypatch, tm
     )
 
     assert result.ok
-    assert os.environ["KNOWME_PROVIDER"] == "minimax"
+    assert os.environ["ZHIYAN_PROVIDER"] == "minimax"
     assert os.environ["MOONSHOT_BASE_URL"] == "https://api.moonshot.cn/anthropic"
     assert rebuilds == []

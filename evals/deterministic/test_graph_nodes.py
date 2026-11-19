@@ -7,9 +7,9 @@ with its inner llm/tool events surfacing at the outer observer tagged node=.
 from __future__ import annotations
 
 from evals.helpers import ScriptedClient, response, text_block, tool_block
-from knowme.graph import END, START, Graph, run_graph
-from knowme.graph.nodes import agent_node, llm_node, tool_node
-from knowme.tools.registry import Tool, ToolRegistry
+from zhiyan.graph import END, START, Graph, run_graph
+from zhiyan.graph.nodes import agent_node, llm_node, tool_node
+from zhiyan.tools.registry import Tool, ToolRegistry
 
 
 def one_node_graph(node) -> Graph:

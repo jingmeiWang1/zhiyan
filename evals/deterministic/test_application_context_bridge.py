@@ -1,6 +1,6 @@
 """The Application Context Bridge is bounded, isolated and easy to inspect."""
 
-from knowme.applications import ApplicationContextBridge
+from zhiyan.applications import ApplicationContextBridge
 
 
 def test_reader_snapshot_renders_for_the_matching_agent_and_session():

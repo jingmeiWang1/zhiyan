@@ -20,8 +20,8 @@ what this module adds on top: the window, the marker, the error text.
 
 import re
 
-from knowme.applications.reader import ReaderError
-from knowme.tools import webpage
+from zhiyan.applications.reader import ReaderError
+from zhiyan.tools import webpage
 
 PAGE = {"name": "article.html", "source": "https://example.com/a",
         "content": "正文第一段。" * 1200}          # 7200 chars

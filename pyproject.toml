@@ -1,5 +1,5 @@
 [project]
-name = "knowme-agent"
+name = "zhiyan-agent"
 version = "0.1.4"
 description = "A framework-free, local-first personal agent platform with a native agent runtime."
 readme = "README.md"
@@ -28,8 +28,8 @@ dependencies = [
 ]
 
 [project.scripts]
-# Branded CLI: `knowme web`, or bare `knowme` to chat.
-knowme = "knowme.__main__:main"
+# Branded CLI: `zhiyan web`, or bare `zhiyan` to chat.
+zhiyan = "zhiyan.__main__:main"
 
 [project.optional-dependencies]
 # Eval pillar: LLM-as-judge (deterministic evals need only pytest)
@@ -70,7 +70,7 @@ memory-backends = [
 notion = [
     "notion-client>=2.5",
 ]
-# Optional: connect MCP servers (.knowme/mcp.json)
+# Optional: connect MCP servers (.zhiyan/mcp.json)
 mcp = [
     "mcp>=1.0",
 ]
@@ -86,7 +86,7 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# An sdist should be what you need to BUILD and TEST knowme — source, bundled
+# An sdist should be what you need to BUILD and TEST zhiyan — source, bundled
 # skills, schema, evals. Left alone it was 2.6 MB, and 2.5 MB of that was a
 # whiteboard PNG and the .excalidraw sources, plus local agent tooling that only
 # matters inside this repo. All of it stays in the checkout,
@@ -98,24 +98,24 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["knowme"]
+packages = ["zhiyan"]
 
 # The bundled skills live at the repo root because that is where contributors
 # add them (`skills/community/`).
-# But `packages = ["knowme"]` ships only the package, so before 2026-07-31 a
-# `pip install knowme-agent` arrived with ZERO skills — procedural memory, one of
+# But `packages = ["zhiyan"]` ships only the package, so before 2026-07-31 a
+# `pip install zhiyan-agent` arrived with ZERO skills — procedural memory, one of
 # the four pillars, silently absent while the web shipped fine (it lives
-# under knowme/ops/static). Copying them in at build time keeps one contributor-
-# facing location and still ships them; knowme.memory.bundled_skill_dirs() looks
+# under zhiyan/ops/static). Copying them in at build time keeps one contributor-
+# facing location and still ships them; zhiyan.memory.bundled_skill_dirs() looks
 # in both places and explains why.
 [tool.hatch.build.targets.wheel.force-include]
-"skills" = "knowme/skills"
+"skills" = "zhiyan/skills"
 
 [tool.ruff]
 line-length = 100
 
 [tool.ruff.lint]
-# Rules knowme IGNORES on purpose — each is a deliberate style choice, not an
+# Rules zhiyan IGNORES on purpose — each is a deliberate style choice, not an
 # oversight. If you're tempted to remove one, read the reason first:
 ignore = [
     "BLE001",  # blind `except Exception` is the documented pattern: tools and

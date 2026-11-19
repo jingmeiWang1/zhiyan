@@ -1739,7 +1739,7 @@ wheels = [
 ]
 
 [[package]]
-name = "knowme-agent"
+name = "zhiyan-agent"
 version = "0.1.4"
 source = { editable = "." }
 dependencies = [

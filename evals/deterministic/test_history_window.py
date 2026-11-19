@@ -20,14 +20,14 @@ called from respond() is not a bound.
 
 from __future__ import annotations
 
-from evals.helpers import ScriptedClient, make_knowme, response, text_block
+from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
 
 HEAD, TAIL = 3, 4          # small, so a few turns reach the trigger
 AT = HEAD + 1 + TAIL       # 8
 
 # Consolidation also calls the model — every consolidate_every exchanges, six by
 # default — so ten turns would trip it and eat a scripted response here. It is
-# pushed out of range in every make_knowme below: this file is about the history
+# pushed out of range in every make_zhiyan below: this file is about the history
 # bound, not about consolidation, and a test that fails for the other reason is
 # worse than no test.
 _NO_CONSOLIDATION = {"consolidate_every": 10_000}
@@ -38,8 +38,8 @@ def _gate_skip():
 
 
 def test_the_prompt_stays_bounded_over_many_turns(tmp_path, monkeypatch):
-    monkeypatch.setenv("KNOWME_SNIP_HEAD", str(HEAD))
-    monkeypatch.setenv("KNOWME_SNIP_TAIL", str(TAIL))
+    monkeypatch.setenv("ZHIYAN_SNIP_HEAD", str(HEAD))
+    monkeypatch.setenv("ZHIYAN_SNIP_TAIL", str(TAIL))
     sent = []
 
     class Recorder(ScriptedClient):
@@ -53,7 +53,7 @@ def test_the_prompt_stays_bounded_over_many_turns(tmp_path, monkeypatch):
     script = []
     for _ in range(turns):
         script += [_gate_skip(), response([text_block("ok")])]
-    app = make_knowme(tmp_path / "home", client=Recorder(script), **_NO_CONSOLIDATION)
+    app = make_zhiyan(tmp_path / "home", client=Recorder(script), **_NO_CONSOLIDATION)
     for i in range(turns):
         app.respond(f"message number {i}")
 
@@ -72,13 +72,13 @@ def test_the_model_is_told_that_earlier_messages_exist(tmp_path, monkeypatch):
     conversation had a past it could not see. The prompt must now carry a marker
     naming the archive — otherwise this is the same silent loss with extra
     steps."""
-    monkeypatch.setenv("KNOWME_SNIP_HEAD", str(HEAD))
-    monkeypatch.setenv("KNOWME_SNIP_TAIL", str(TAIL))
+    monkeypatch.setenv("ZHIYAN_SNIP_HEAD", str(HEAD))
+    monkeypatch.setenv("ZHIYAN_SNIP_TAIL", str(TAIL))
 
     script = []
     for _ in range(10):
         script += [_gate_skip(), response([text_block("ok")])]
-    app = make_knowme(tmp_path / "home", client=ScriptedClient(script), **_NO_CONSOLIDATION)
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient(script), **_NO_CONSOLIDATION)
     for i in range(10):
         app.respond(f"message number {i}")
 
@@ -91,7 +91,7 @@ def test_the_model_is_told_that_earlier_messages_exist(tmp_path, monkeypatch):
 def test_defaults_bound_a_long_thread(tmp_path):
     """The shipped numbers, not the test overrides: 50 messages, and the trigger
     is DERIVED from head+tail so the three cannot disagree."""
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]), **_NO_CONSOLIDATION)
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]), **_NO_CONSOLIDATION)
 
     assert app.settings.snip_head == 3
     assert app.settings.snip_tail == 46

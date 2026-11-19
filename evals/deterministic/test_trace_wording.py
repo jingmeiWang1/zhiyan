@@ -18,9 +18,9 @@ from pathlib import Path
 
 import pytest
 
-from evals.helpers import ScriptedClient, make_knowme, response, text_block, tool_block
+from evals.helpers import ScriptedClient, make_zhiyan, response, text_block, tool_block
 
-TRACE_JS = Path(__file__).resolve().parents[2] / "knowme/ops/static/js/trace.js"
+TRACE_JS = Path(__file__).resolve().parents[2] / "zhiyan/ops/static/js/trace.js"
 
 # trace.js 是 classic script（共享全局作用域），顶层只定义常量和函数，没有一处
 # 会在载入时调用别人 —— 所以整份 eval 进来就能直接问它问题。
@@ -92,7 +92,7 @@ def test_the_browser_and_the_server_build_the_gate_line_the_same_way():
     """门控那一行/那一段在两边各写了一份实现（直播是浏览器拼的，回看读服务端
     存的 meta.steps）。这里把同一个 payload 喂给两边，要求逐字节相等 —— 而且
     先各自等于写死的那句人话，因为「两边一致地错」也是错。"""
-    from knowme.core.runtime import gate_detail, gate_label
+    from zhiyan.core.runtime import gate_detail, gate_label
 
     js = _js_steps()
     assert gate_label(GATE_EV) == GATE_LABEL_FULL == js["gate_full"]
@@ -107,7 +107,7 @@ def test_the_stored_timeline_says_the_very_same_thing(tmp_path):
         response([tool_block("save_note", {"subject": "alex", "content": "早起"})], "tool_use"),
         response([text_block("记下了。")]),
     ]
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([gate] + turn))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([gate] + turn))
     app.respond("记住 alex 喜欢早起")
 
     row = app.conn.execute(

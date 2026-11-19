@@ -1,6 +1,6 @@
 # Security
 
-knowme runs on your own machine, with your own API keys, and reads your own
+zhiyan runs on your own machine, with your own API keys, and reads your own
 calendar, notes and messages. That makes a few things worth stating plainly.
 
 ## Reporting a vulnerability
@@ -27,9 +27,9 @@ anonymous.
 
 - **The agent can run tools that touch your stuff.** That's the product. Tools
   are listed in the dashboard and gated behind extras and flags.
-- **`KNOWME_EXPERIMENTAL=1`** enables sub-agent delegation, which runs another
+- **`ZHIYAN_EXPERIMENTAL=1`** enables sub-agent delegation, which runs another
   coding agent locally. It's off by default and documented as experimental.
-- **Your own API keys in your own `.env`.** knowme never sends them anywhere but
+- **Your own API keys in your own `.env`.** zhiyan never sends them anywhere but
   the provider you configured.
 
 ## Running it safely

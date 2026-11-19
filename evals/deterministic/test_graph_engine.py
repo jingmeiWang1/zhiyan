@@ -12,8 +12,8 @@ import time
 
 import pytest
 
-from knowme.graph import END, START, Graph, GraphStateCollision, Node, run_graph
-from knowme.graph.nodes import key_router
+from zhiyan.graph import END, START, Graph, GraphStateCollision, Node, run_graph
+from zhiyan.graph.nodes import key_router
 
 
 def collect_events():

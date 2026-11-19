@@ -6,7 +6,7 @@ default (adopted when you switch to it). Live goal Sean asked for: "a default
 model for each api key, the user can choose more models, and the chat switcher
 shows the models already selected in settings."
 
-The shortlist lives in .knowme/models.json as {"pinned": ["provider:model", ...]};
+The shortlist lives in .zhiyan/models.json as {"pinned": ["provider:model", ...]};
 these tests drive the same helpers the dashboard's /api/pin route calls."""
 
 from __future__ import annotations
@@ -16,8 +16,8 @@ import os
 
 import pytest
 
-from knowme.ops import catalog
-from knowme.ops import settings_api as d
+from zhiyan.ops import catalog
+from zhiyan.ops import settings_api as d
 
 PROVIDER_KEYS = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "DEEPSEEK_API_KEY",
                  "MINIMAX_API_KEY", "MOONSHOT_API_KEY", "ZHIPU_API_KEY", "OPENROUTER_API_KEY",
@@ -29,15 +29,15 @@ def home(tmp_path, monkeypatch):
     """Point every load_settings() at a throwaway home, run from there so
     apply_settings's find_dotenv writes to a throwaway .env, and clear all
     provider keys so the default shortlist is empty unless a test sets one."""
-    monkeypatch.setenv("KNOWME_HOME", str(tmp_path))
+    monkeypatch.setenv("ZHIYAN_HOME", str(tmp_path))
     monkeypatch.chdir(tmp_path)
     (tmp_path / ".env").write_text("")
     for var in PROVIDER_KEYS:
         monkeypatch.delenv(var, raising=False)
     # apply_settings bypasses monkeypatch and writes directly to os.environ,
-    # so KNOWME_PROVIDER must also be tracked to prevent leaking into later
+    # so ZHIYAN_PROVIDER must also be tracked to prevent leaking into later
     # tests (test_tool_trigger would inherit a stale provider and crash).
-    monkeypatch.delenv("KNOWME_PROVIDER", raising=False)
+    monkeypatch.delenv("ZHIYAN_PROVIDER", raising=False)
     return tmp_path
 
 
@@ -86,22 +86,22 @@ def test_switching_provider_adopts_its_pinned_default(home, monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "g")
     monkeypatch.setenv("MOONSHOT_API_KEY", "k")
     (home / "models.json").write_text(json.dumps({"pinned": ["kimi:kimi-k3"]}))
-    from knowme import integrations
-    from knowme.ops import browser_agent
+    from zhiyan import integrations
+    from zhiyan.ops import browser_agent
 
     monkeypatch.setattr(browser_agent, "rebuild", lambda: None)
     monkeypatch.setattr(browser_agent, "current", lambda: type("A", (), {"tracer": type("T", (), {"event": lambda *args: None})()})())
-    monkeypatch.setenv("KNOWME_PROVIDER", "gemini")
-    monkeypatch.setenv("KNOWME_MODEL", "gemini-3.5-flash")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "gemini")
+    monkeypatch.setenv("ZHIYAN_MODEL", "gemini-3.5-flash")
     result = integrations.apply_provider("kimi")
     assert result.ok
-    assert os.getenv("KNOWME_PROVIDER") == "kimi"
-    assert os.getenv("KNOWME_MODEL") == "kimi-k3"  # not gemini's model
+    assert os.getenv("ZHIYAN_PROVIDER") == "kimi"
+    assert os.getenv("ZHIYAN_MODEL") == "kimi-k3"  # not gemini's model
 
 
 def _live_agent(monkeypatch):
     """Stub the browser agent so apply_provider can run without a real turn."""
-    from knowme.ops import browser_agent
+    from zhiyan.ops import browser_agent
 
     monkeypatch.setattr(browser_agent, "rebuild", lambda: None)
     monkeypatch.setattr(
@@ -113,18 +113,18 @@ def _live_agent(monkeypatch):
 def test_a_model_you_save_is_the_one_the_shortlist_shows(home, monkeypatch):
     """The live bug: change a provider's model in the edit modal and the header
     chip says the new one, but the switcher still lists the old one — because
-    KNOWME_MODEL (the .env field the modal writes) and the pinned shortlist were
+    ZHIYAN_MODEL (the .env field the modal writes) and the pinned shortlist were
     two places deciding the same thing, and only the first was updated."""
     monkeypatch.setenv("MOONSHOT_API_KEY", "k")
     (home / "models.json").write_text(json.dumps({"pinned": ["kimi:kimi-k3"]}))
-    monkeypatch.setenv("KNOWME_PROVIDER", "kimi")
-    monkeypatch.setenv("KNOWME_MODEL", "kimi-k3")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "kimi")
+    monkeypatch.setenv("ZHIYAN_MODEL", "kimi-k3")
     _live_agent(monkeypatch)
-    from knowme import integrations
+    from zhiyan import integrations
 
     assert integrations.apply_provider("kimi", model="kimi-k2.6").ok
 
-    assert os.getenv("KNOWME_MODEL") == "kimi-k2.6"
+    assert os.getenv("ZHIYAN_MODEL") == "kimi-k2.6"
     # the shortlist follows the save, in place (kimi keeps its slot in the menu)
     assert catalog.pinned_specs() == ["kimi:kimi-k2.6"]
     assert catalog.default_model_for("kimi") == "kimi-k2.6"
@@ -140,15 +140,15 @@ def test_switching_away_and_back_keeps_the_model_you_saved(home, monkeypatch):
     monkeypatch.setenv("MOONSHOT_API_KEY", "k")
     monkeypatch.setenv("GEMINI_API_KEY", "g")
     (home / "models.json").write_text(json.dumps({"pinned": ["kimi:kimi-k3"]}))
-    monkeypatch.setenv("KNOWME_PROVIDER", "kimi")
-    monkeypatch.setenv("KNOWME_MODEL", "kimi-k3")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "kimi")
+    monkeypatch.setenv("ZHIYAN_MODEL", "kimi-k3")
     _live_agent(monkeypatch)
-    from knowme import integrations
+    from zhiyan import integrations
 
     integrations.apply_provider("kimi", model="kimi-k2.6")
     assert integrations.apply_provider("gemini").ok          # away...
     assert integrations.apply_provider("kimi").ok            # ...and back
-    assert os.getenv("KNOWME_MODEL") == "kimi-k2.6"          # not kimi-k3 again
+    assert os.getenv("ZHIYAN_MODEL") == "kimi-k2.6"          # not kimi-k3 again
 
 
 def test_saving_a_model_takes_over_the_providers_row_and_leaves_others_alone(home, monkeypatch):
@@ -157,10 +157,10 @@ def test_saving_a_model_takes_over_the_providers_row_and_leaves_others_alone(hom
     so a provider never accumulates a row per model you tried."""
     (home / "models.json").write_text(json.dumps({"pinned": [
         "gemini:gemini-3.5-flash", "kimi:kimi-k3", "openai:gpt-5.3"]}))
-    monkeypatch.setenv("KNOWME_PROVIDER", "kimi")
-    monkeypatch.setenv("KNOWME_MODEL", "kimi-k3")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "kimi")
+    monkeypatch.setenv("ZHIYAN_MODEL", "kimi-k3")
     _live_agent(monkeypatch)
-    from knowme import integrations
+    from zhiyan import integrations
 
     assert integrations.apply_provider("kimi", model="kimi-k2.6").ok
     assert catalog.pinned_specs() == [
@@ -174,10 +174,10 @@ def test_picking_a_model_that_is_already_pinned_keeps_the_others(home, monkeypat
     group — the first stays in the list, one row down."""
     (home / "models.json").write_text(json.dumps({"pinned": [
         "kimi:kimi-k3", "kimi:kimi-k2.6", "openai:gpt-5.3"]}))
-    monkeypatch.setenv("KNOWME_PROVIDER", "kimi")
-    monkeypatch.setenv("KNOWME_MODEL", "kimi-k3")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "kimi")
+    monkeypatch.setenv("ZHIYAN_MODEL", "kimi-k3")
     _live_agent(monkeypatch)
-    from knowme import integrations
+    from zhiyan import integrations
 
     assert integrations.apply_provider("kimi", model="kimi-k2.6").ok
     assert catalog.pinned_specs() == ["kimi:kimi-k2.6", "kimi:kimi-k3", "openai:gpt-5.3"]
@@ -189,9 +189,9 @@ def test_a_provider_with_no_pin_gets_the_saved_model_added(home, monkeypatch):
     switcher shows the model the chip claims (it used to be invisible)."""
     (home / "models.json").write_text(json.dumps({"pinned": ["openai:gpt-5.3"]}))
     monkeypatch.setenv("MOONSHOT_API_KEY", "k")
-    monkeypatch.setenv("KNOWME_PROVIDER", "kimi")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "kimi")
     _live_agent(monkeypatch)
-    from knowme import integrations
+    from zhiyan import integrations
 
     assert integrations.apply_provider("kimi", model="kimi-k2.6").ok
     assert catalog.pinned_specs() == ["openai:gpt-5.3", "kimi:kimi-k2.6"]
@@ -202,14 +202,14 @@ def test_switching_without_naming_a_model_still_leaves_the_shortlist_alone(home,
     must not rewrite the list it just read from."""
     (home / "models.json").write_text(json.dumps({"pinned": ["kimi:kimi-k3", "gemini:gemini-3.5-flash"]}))
     monkeypatch.setenv("GEMINI_API_KEY", "g")
-    monkeypatch.setenv("KNOWME_PROVIDER", "kimi")
-    monkeypatch.setenv("KNOWME_MODEL", "kimi-k3")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "kimi")
+    monkeypatch.setenv("ZHIYAN_MODEL", "kimi-k3")
     _live_agent(monkeypatch)
-    from knowme import integrations
+    from zhiyan import integrations
     before = (home / "models.json").read_text(encoding="utf-8")
 
     assert integrations.apply_provider("gemini").ok
-    assert os.getenv("KNOWME_MODEL") == "gemini-3.5-flash"   # the pinned default
+    assert os.getenv("ZHIYAN_MODEL") == "gemini-3.5-flash"   # the pinned default
     assert (home / "models.json").read_text(encoding="utf-8") == before
 
 
@@ -237,7 +237,7 @@ def test_no_pins_is_empty_not_error(home):
 
 def test_default_pair_is_flagship_then_fast(home):
     """Each provider ships a flagship + fast default pair for the switcher."""
-    from knowme.loop.models import PROVIDERS
+    from zhiyan.loop.models import PROVIDERS
 
     assert PROVIDERS["anthropic"].default_pair() == ["claude-opus-4-8", "claude-sonnet-5"]
     assert PROVIDERS["gemini"].default_pair() == ["gemini-3.1-pro-preview", "gemini-3.5-flash"]
@@ -280,7 +280,7 @@ def test_known_catalog_providers_can_list(home):
 
     glm is anthropic-wire with no verified public /models endpoint, so it
     intentionally shows its curated defaults until we wire and verify one."""
-    from knowme.loop.models import PROVIDERS
+    from zhiyan.loop.models import PROVIDERS
 
     CAN_LIST = {"anthropic", "openai", "openrouter", "gemini", "deepseek", "minimax",
                 "kimi", "xai", "opencode_zen", "opencode_go"}
@@ -295,10 +295,10 @@ def test_list_models_honors_provider_override(home, monkeypatch):
     THAT provider's catalog, not the active one. Cache-seeded to avoid network."""
     import time
 
-    from knowme.loop.models import PROVIDERS
+    from zhiyan.loop.models import PROVIDERS
 
     monkeypatch.delenv("MOONSHOT_BASE_URL", raising=False)
-    monkeypatch.delenv("KNOWME_BASE_URL", raising=False)
+    monkeypatch.delenv("ZHIYAN_BASE_URL", raising=False)
     url = PROVIDERS["kimi"].catalog_url
     # cache tuple is (ts, models, error) — None error means a real listing
     monkeypatch.setattr(catalog, "_models_cache", {url: (time.time(), [{"id": "kimi-k3"}], None)})

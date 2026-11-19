@@ -11,13 +11,11 @@ from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from knowme import db  # noqa: E402
-from knowme.applications import health  # noqa: E402
-from knowme.rag.chunk import chunks_for  # noqa: E402
-from knowme.tools import calendar, knowledge, messages, notes  # noqa: E402
-from knowme.tools.documents import make_document_tools  # noqa: E402
-from knowme.tools.health import make_health_tools  # noqa: E402
-from knowme.tools.tool_results import make_tool as make_result_tool  # noqa: E402
+from zhiyan import db  # noqa: E402
+from zhiyan.rag.chunk import chunks_for  # noqa: E402
+from zhiyan.tools import calendar, knowledge, messages, notes  # noqa: E402
+from zhiyan.tools.documents import make_document_tools  # noqa: E402
+from zhiyan.tools.tool_results import make_tool as make_result_tool  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 
@@ -106,17 +104,15 @@ def check_state(conn, trial_dir: Path, check: dict, aliases: dict) -> None:
 
 def validate_loop(task: dict) -> None:
     """Prove reference calls work against today's tools in an isolated home."""
-    with TemporaryDirectory(prefix="knowme-benchmark-") as temp:
+    with TemporaryDirectory(prefix="zhiyan-benchmark-") as temp:
         trial_dir = Path(temp)
-        home = trial_dir / ".knowme"
+        home = trial_dir / ".zhiyan"
         (home / "outbox").mkdir(parents=True)
         conn = db.connect(home)
         try:
             knowledge._ensure_table(conn)
-            health._ensure_table(conn)
             tools = {
                 **knowledge.make_knowledge_tools(conn),
-                **make_health_tools(conn),
                 "create_event": calendar.make_tool(conn, home),
                 # No home: the calendar reader cannot consult a real Google account.
                 "list_events": calendar.make_list_tool(conn),
@@ -135,8 +131,6 @@ def validate_loop(task: dict) -> None:
                 aliases[key] = row["id"]
             for seed in setup.get("events", []):
                 tools["create_event"].fn(**seed)
-            for seed in setup.get("foods", []):
-                health.add_food(conn, **seed)
 
             expected = task["expected"]
             calls = expected["tool_calls"]
@@ -195,10 +189,12 @@ def validate() -> None:
     suites = {name: load_tasks(name) for name in
               ("loop_tools", "context_engineering", "agentic_rag")}
     all_tasks = [task for suite in suites.values() for task in suite]
-    require(len({task["id"] for task in all_tasks}) == 90, "Duplicate IDs / not 90 tasks")
-    require(len({task["input"] for task in all_tasks}) == 90, "Duplicate inputs")
+    require(len({task["id"] for task in all_tasks}) == 83, "Duplicate IDs / not 83 tasks")
+    require(len({task["input"] for task in all_tasks}) == 83, "Duplicate inputs")
+    expected_counts = {"loop_tools": 23, "context_engineering": 30, "agentic_rag": 30}
     for category, tasks in suites.items():
-        require(len(tasks) == 30, f"{category}: expected 30 tasks")
+        require(len(tasks) == expected_counts[category],
+                f"{category}: expected {expected_counts[category]} tasks")
         for task in tasks:
             require(task["category"] == category, "Wrong category")
             require(task["split"] in {"dev", "test"}, "Invalid split")
@@ -231,7 +227,7 @@ def validate() -> None:
         print(f"{category}: {len(tasks)} tasks OK")
 
     # Check non-loop tool names against actual factories as well.
-    with TemporaryDirectory(prefix="knowme-benchmark-") as temp:
+    with TemporaryDirectory(prefix="zhiyan-benchmark-") as temp:
         conn = db.connect(Path(temp))
         try:
             names = make_document_tools(conn, Path(temp)).keys()
@@ -247,7 +243,7 @@ def validate() -> None:
     test = {t["setup"]["history_fixture"] for t in suites["context_engineering"]
             if t["split"] == "test"}
     require(dev.isdisjoint(test), "Context fixture leaks between splits")
-    print("Total: 90 tasks; gold tool calls, fixtures and evidence validated. No LLM calls.")
+    print("Total: 83 tasks; gold tool calls, fixtures and evidence validated. No LLM calls.")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
-# Zhiyan (KnowMe)
+# Zhiyan
 
 **A framework-free, extensible personal agent platform.**
 
-Zhiyan (KnowMe) implements the agent loop, sessions, context management, memory, tool execution, and run tracing directly in Python, then composes them into different Agents and Applications. It centers on local data, with workspaces for document reading, agent-directed RAG, research notes, and health management.
+Zhiyan implements the agent loop, sessions, context management, memory, tool execution, and run tracing directly in Python, then composes them into different Agents and Applications. It centers on local data, with workspaces for document reading, agent-directed RAG, and research notes.
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![uv](https://img.shields.io/badge/package%20manager-uv-DE5FE9)](https://docs.astral.sh/uv/)
@@ -10,11 +10,11 @@ Zhiyan (KnowMe) implements the agent loop, sessions, context management, memory,
 
 [简体中文](README.md)
 
-![KnowMe Web workspace](docs/images/chat.jpg)
+![Zhiyan Web workspace](docs/images/chat.jpg)
 
 ## Why it is a platform
 
-The core of KnowMe is not one fixed assistant. It is a reusable personal-agent runtime:
+The core of Zhiyan is not one fixed assistant. It is a reusable personal-agent runtime:
 
 - **An Agent is configuration, not another runtime.** Each Agent declares its prompt, tool scope, model, context policy, and run budget, then executes on the shared `AgentRuntime`.
 - **An Application is more than a chat page.** Applications keep domain state such as a document, selection, or project file, then pass that working context to an Agent through the Context Bridge.
@@ -25,24 +25,17 @@ The core of KnowMe is not one fixed assistant. It is a reusable personal-agent r
 
 ## Web workspace
 
-KnowMe organizes the same runtime into three product layers:
+Zhiyan organizes the same runtime into three product layers:
 
 | Layer | Built-in today | Purpose |
 | --- | --- | --- |
-| **Agents** | General, Research, Health | Different prompts and tool scopes for everyday, research and health work |
-| **Applications** | Reader and document library, Knowledge Base, Deep Research, Health and Training | Stateful work surfaces that give an Agent a concrete task environment |
+| **Agents** | General, Research, Exam, Language | Different prompts and tool scopes for everyday, research, and study work |
+| **Applications** | Reader and document library, Knowledge Base, Deep Research, Exam Prep, Language Learning | Stateful work surfaces that give an Agent a concrete task environment |
 | **Management** | Overview, Ops, Memory, Behaviour, Models, Connections | Inspect runtime state and manage models, memory, and integrations |
 
 The Reader also has a dedicated embedded Agent. It receives the open document and current selection instead of answering independently from the material.
 
-The Health Agent is the one with hands: it reads and writes the six tables behind the health application
-(body metrics, workouts, meals, a daily target, a food library, and plans), so "log this for me" really
-lands in the database. Say "150g of chicken breast" and it looks the per-100g values up in the food
-library and does the arithmetic itself rather than quoting a calorie figure from memory. It reads your
-actual data before writing a plan, looks things up when a conclusion needs evidence, and says "this is
-common practice, not a research finding" when it cannot find any. It is not a doctor.
-
-![KnowMe overview](docs/images/overview.jpg)
+![Zhiyan overview](docs/images/overview.jpg)
 
 ### Platform capabilities
 
@@ -56,6 +49,8 @@ common practice, not a research finding" when it cannot find any. It is not a do
 - Live and historical observability through step timelines, JSONL traces, token usage, latency, and cost.
 - Document operations: upload, URL import, persistent storage, rename, delete, text search, and a separate Reader conversation for each document.
 - Document RAG with automatic chunking and vector indexing, semantic retrieval, optional reranking, and source passages with page references.
+- Study: exam preparation and language learning on one scheduling/review core, with source-grounded card generation, SM-2 reviews, and daily plans.
+- Language practice: vocabulary scheduling, word-list import, browser TTS, dictation scoring, writing feedback, and speaking prompts — without pretending to do speech recognition or pronunciation scoring.
 - A Web model workbench for providers, API keys, main/gate/summary models, and custom OpenAI- or Anthropic-compatible endpoints; embeddings and reranking have separate provider/model settings.
 
 ## Document reading and operations
@@ -63,7 +58,7 @@ common practice, not a research finding" when it cannot find any. It is not a do
 The Reader keeps the library, document content, and embedded conversation in one workspace:
 
 - **Import and manage**: upload PDF, Markdown, plain text, code, JSON, CSV, HTML, or XML, or import a public HTTP(S) URL. The per-file limit is **32 MB**; documents can be searched, renamed, and deleted.
-- **Keep documents locally**: original files live in `.knowme/documents/`; extracted text and metadata live in SQLite. The library is shared across the workspace and survives refreshes and restarts.
+- **Keep documents locally**: original files live in `.zhiyan/documents/`; extracted text and metadata live in SQLite. The library is shared across the workspace and survives refreshes and restarts.
 - **Read long PDFs**: HTTP Range serves file segments; pdf.js renders pages and selectable text. Only pages near the viewport are rendered, with page navigation, document-wide text search, and Ctrl + wheel zoom.
 - **Ask about the material**: select text and ask in the right-hand pane. The Context Bridge supplies the open document, its ID, and the selection; each document has its own conversation thread.
 - **Continue reading on demand**: the context snapshot carries at most 24,000 characters of document text and states when it is truncated. The Agent can continue with character offsets through `open_document`, or retrieve a passage before checking the original.
@@ -114,16 +109,44 @@ flowchart TD
 
 - **Scope and budgets**: each sub-agent has its own context and only `search_web` and `read_webpage`. Defaults are 3 rounds and 8 model iterations per sub-question per round; the page lets you adjust both budgets.
 - **Continue or stop**: code extracts and deduplicates URLs from actual tool records. No new sources, or reaching the round limit, routes to synthesis. Later rounds receive earlier findings with instructions to avoid repeated research.
-- **Report and persistence**: synthesis is instructed to include source links, disagreements, and unfinished sub-questions. The report is saved as a Knowledge Base note under `research` and a Markdown file in `.knowme/outbox/`. A failed sub-agent records its error while the other sub-questions continue.
+- **Report and persistence**: synthesis is instructed to include source links, disagreements, and unfinished sub-questions. The report is saved as a Knowledge Base note under `research` and a Markdown file in `.zhiyan/outbox/`. A failed sub-agent records its error while the other sub-questions continue.
 - **Visible execution**: SSE shows the plan, rounds, search/read counts, budget usage, and latency. Run events are also stored so historical reports can replay their research process.
 
-Start from the **Deep Research** page, `/deep_research <topic>` in chat, or `uv run knowme deep_research "<topic>"`; all three share the same implementation. See the [workflow definition](knowme/graph/workflows/deep_research.py) and [runtime binding](knowme/ops/deep_research.py).
+Start from the **Deep Research** page, `/deep_research <topic>` in chat, or `uv run zhiyan deep_research "<topic>"`; all three share the same implementation. See the [workflow definition](zhiyan/graph/workflows/deep_research.py) and [runtime binding](zhiyan/ops/deep_research.py).
+
+## Study: exam preparation and language learning
+
+Study has two tracks that share one `unit → plan → card → review` core, but schedule and measure differently:
+
+| | Exam preparation | Language learning |
+| --- | --- | --- |
+| Core question | Syllabus coverage and retention | Vocabulary and listening/speaking/reading/writing practice |
+| Unit of work | Textbook chapter / syllabus item | Word, dictation, article |
+| Plan | Unit coverage to the exam date, with an honest capacity/coverage number | Daily mix: new words, review, listening, speaking, reading, writing |
+| Progress | Unit completion and card accuracy | Active/mature words, target coverage, practice minutes |
+
+```text
+upload syllabus/textbook/lesson → extract units → schedule to the exam date or daily mix
+→ generate candidate cards from a unit (quote must exist in the source) → user confirms
+→ learn today + review what is due → SM-2 updates the next due date
+```
+
+- **Materials stay in the document library**: a study project links `documents.id`; it does not copy files. Markdown splits by headings, PDFs map page ranges back to character offsets, and short-line outlines become one unit per line.
+- **The scheduler does the arithmetic**: a day never exceeds the available minutes; if the material cannot be covered before the exam, the page says so with a percentage. Replanning starts tomorrow and keeps the previous version.
+- **Cards are checkable**: AI cards enter a candidate inbox, and a card whose `source_quote` is not an exact (or whitespace-folded) substring of the unit is rejected. Only confirmed cards enter review.
+- **Review history is append-only**: `ease/interval/due` on the card are materialized state; `study_reviews` is the record that can recompute the schedule later.
+- **Language boundaries**: TTS only reads text; dictation compares a normalized transcript; writing returns a corrected version and notes; speaking is conversation and feedback, not speech recognition or a pronunciation score.
+- **Two Agents**: Exam Coach handles coverage, planning, and source-grounded questions; Language Tutor handles vocabulary, conversation corrections, and practice. Tools also check the project `kind`, so cross-track operations are rejected.
+
+Pages are **Exam Prep** (`#exam`) and **Language Learning** (`#language`). Data lives in the lazily-created `study_*` SQLite tables; audio lives under `.zhiyan/study/audio/`. The API is `POST /api/study`; audio uses `POST /api/study/audio/upload` and `GET /api/study/audio?id=`.
+
+The first version does not include a mistake notebook, mock exams, speech recognition, Anki import/export, or OCR.
 
 ## Technology stack
 
 ### Default implementation
 
-| Layer | Technology | Role in KnowMe |
+| Layer | Technology | Role in Zhiyan |
 | --- | --- | --- |
 | Language and packaging | Python 3.11+, uv, Hatchling | Development, dependency management, and Python package builds |
 | Agent orchestration | Plain Python, dataclasses, Tool Registry | AgentSpec, model/tool loop, tool allowlists, and execution budgets |
@@ -132,7 +155,7 @@ Start from the **Deep Research** page, `/deep_research <topic>` in chat, or `uv 
 | Web backend | `http.server.ThreadingHTTPServer`, SSE | Local APIs, static files, and live runtime events |
 | Web frontend | HTML/CSS/JavaScript, Fetch, browser ES module entrypoint | Workspace, documents, conversations, and timelines without a build step |
 | Document parsing and display | pypdf, HTMLParser, pdf.js, IntersectionObserver | PDF extraction, HTML text extraction, selectable PDF text, and page virtualization |
-| Local data | SQLite, filesystem, JSON/JSONL | Sessions, memory, notes, documents, health records, configuration, and traces |
+| Local data | SQLite, filesystem, JSON/JSONL | Sessions, memory, notes, documents, configuration, and traces |
 | Personal memory retrieval | SQLite FTS5/BM25, `LIKE` | Facts and episodes, with substring fallback for unsegmented scripts |
 | Document RAG | Custom chunker, `urllib`, SQLite vector BLOBs, Python cosine scoring | Embedding/rerank requests, vector storage, and passage retrieval |
 | Configuration and terminal | python-dotenv, Rich | Local environment configuration and terminal output |
@@ -147,7 +170,7 @@ These capabilities are configured as needed and are not prerequisites for the ba
 | Capability | Technology or service | Dependency extra / configuration |
 | --- | --- | --- |
 | Local embeddings / reranker | For example, Ollama + bge-m3, llama.cpp + bge-reranker-v2-m3 | Run compatible endpoints separately and configure their roles |
-| External tools | MCP Python SDK, stdio MCP servers | `mcp`; `.knowme/mcp.json` |
+| External tools | MCP Python SDK, stdio MCP servers | `mcp`; `.zhiyan/mcp.json` |
 | Semantic memory backends | Supabase / pgvector, Mem0, Zep, LangMem | `supabase` or `memory-backends` |
 | Episodic memory backend | Notion | `notion` |
 | Calendar | Google Calendar API / OAuth, native macOS calendar tools | `gcal`; Connections configuration |
@@ -192,18 +215,22 @@ The core is intentionally explicit:
 
 | Module | Responsibility |
 | --- | --- |
-| `knowme/core/loop.py` | Native observe → reason → act loop |
-| `knowme/core/runtime.py` | Assembly of one complete Agent turn |
-| `knowme/core/session.py` | Conversation history, restoration, and persistence |
-| `knowme/core/context/` | Context budgets, compaction, and summary policies |
-| `knowme/core/spec.py` | Reusable `AgentSpec` declarations |
-| `knowme/core/tools.py` | Tool schemas, allowlists, and execution boundary |
-| `knowme/memory/` | Retrieval gating, stores, consolidation, and skills |
-| `knowme/applications/` | Application backends and the Context Bridge |
-| `knowme/tools/documents.py` | Document listing, literal search, semantic retrieval, and windowed reading |
-| `knowme/rag/` | Chunking, embeddings, vector storage, background indexing, and reranking |
-| `knowme/graph/` | The project's own graph runner and workflows |
-| `knowme/ops/web/` | Local Web API and SSE event streaming |
+| `zhiyan/core/loop.py` | Native observe → reason → act loop |
+| `zhiyan/core/runtime.py` | Assembly of one complete Agent turn |
+| `zhiyan/core/session.py` | Conversation history, restoration, and persistence |
+| `zhiyan/core/context/` | Context budgets, compaction, and summary policies |
+| `zhiyan/core/spec.py` | Reusable `AgentSpec` declarations |
+| `zhiyan/core/tools.py` | Tool schemas, allowlists, and execution boundary |
+| `zhiyan/memory/` | Retrieval gating, stores, consolidation, and skills |
+| `zhiyan/applications/` | Application backends and the Context Bridge |
+| `zhiyan/tools/documents.py` | Document listing, literal search, semantic retrieval, and windowed reading |
+| `zhiyan/applications/study.py` | Study projects, units, both schedulers, SM-2, review log, and audio storage |
+| `zhiyan/ops/study_cards.py` | Candidate-card generation with source-quote validation |
+| `zhiyan/ops/study_language.py` | Word-list import, writing correction, and dictation feedback |
+| `zhiyan/tools/study.py` | Study Agent tools, isolated by project kind |
+| `zhiyan/rag/` | Chunking, embeddings, vector storage, background indexing, and reranking |
+| `zhiyan/graph/` | The project's own graph runner and workflows |
+| `zhiyan/ops/web/` | Local Web API and SSE event streaming |
 
 ## Quickstart
 
@@ -213,11 +240,11 @@ Requirements:
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - An API key for a model provider that supports tool calling
 
-After cloning the repository, run:
-
 ```bash
+git clone git@github.com:jingmeiWang1/zhiyan.git
+cd zhiyan
 uv sync
-uv run knowme
+uv run zhiyan
 ```
 
 The terminal prints the actual URL. Defaults are:
@@ -225,7 +252,7 @@ The terminal prints the actual URL. Defaults are:
 - Windows: `http://localhost:8888`
 - macOS / Linux: `http://localhost:7777`
 
-If the port is unavailable, KnowMe automatically tries the following ports.
+If the port is unavailable, Zhiyan automatically tries the following ports.
 
 On the first launch:
 
@@ -234,24 +261,24 @@ On the first launch:
 3. Fetch or enter a model ID, save it, and make the provider current.
 4. Return to **General** and start the first conversation.
 
-Provider settings are written to the local `.env`; custom provider definitions live in `.knowme/providers.json`. Both locations are ignored by Git.
+Provider settings are written to the local `.env`; custom provider definitions live in `.zhiyan/providers.json`. Both locations are ignored by Git.
 
 ### Enable document semantic retrieval (optional)
 
 First register a custom embedding provider in **Models**. For example, register `local_ollama` with protocol `openai` and Base URL `http://127.0.0.1:11434/v1`, and prepare the `bge-m3` model in your local Ollama service. Then set the following in the project `.env`:
 
 ```dotenv
-KNOWME_EMBED_PROVIDER=local_ollama
-KNOWME_EMBED_MODEL=bge-m3
+ZHIYAN_EMBED_PROVIDER=local_ollama
+ZHIYAN_EMBED_MODEL=bge-m3
 ```
 
-Restart KnowMe to begin background indexing. **Both provider and model must be set to enable it.** Document reading and literal search remain available without this configuration.
+Restart Zhiyan to begin background indexing. **Both provider and model must be set to enable it.** Document reading and literal search remain available without this configuration.
 
 For reranking, register a compatible provider exposing `/rerank`, such as `local_rerank`, and set:
 
 ```dotenv
-KNOWME_RERANK_PROVIDER=local_rerank
-KNOWME_RERANK_MODEL=bge-reranker-v2-m3
+ZHIYAN_RERANK_PROVIDER=local_rerank
+ZHIYAN_RERANK_MODEL=bge-reranker-v2-m3
 ```
 
 These provider IDs are examples and must match the IDs registered in Models. Embeddings, reranking, and conversation models can use different services; local services are started separately by the user. See the [development guide](docs/DEVELOPMENT_GUIDE.md#文档库的语义检索rag) and [`.env.example`](.env.example) for configuration and implementation details.
@@ -280,7 +307,7 @@ The runtime continues to own sessions, context, memory, tool execution, and trac
 
 An Application is a stateful work surface, not a second Agent Core. A new Application normally needs to:
 
-1. Implement domain data and actions under `knowme/applications/`.
+1. Implement domain data and actions under `zhiyan/applications/`.
 2. Add its Web API and frontend view.
 3. Publish the current resource, content, selection, or UI state through `ApplicationContextBridge`.
 4. Pass the rendered Application Context into the target Agent's next turn.
@@ -290,9 +317,10 @@ This makes it possible to add mail, project management, data analysis, or other 
 ## Data and security boundaries
 
 - The Web server only binds to `127.0.0.1`.
-- Local data lives under `.knowme/`; the primary store is SQLite `state.db`.
+- Local data lives under `.zhiyan/`; the primary store is SQLite `state.db`.
 - API keys live in the local `.env`. The Web UI reports whether a key is configured but does not return the full value.
 - Conversations and tool context are sent to the selected model provider. Document chunks and retrieval queries are sent to the configured embedding / reranker endpoints; local endpoints can process this part on your machine.
+- Study projects, units, cards, and review logs live in the `study_*` SQLite tables; listening audio lives under `.zhiyan/study/audio/`. Card generation and writing correction send the relevant unit/writing text to the model provider; TTS uses the browser's own speech synthesis and does not go through the provider.
 - Calendar, Notion, search, or MCP integrations make their corresponding external requests.
 
 See [`SECURITY.md`](SECURITY.md) for the full security model.
@@ -308,7 +336,7 @@ uv sync --extra dev
 Run lint and the offline deterministic suite:
 
 ```bash
-uv run ruff check knowme evals
+uv run ruff check zhiyan evals
 uv run python -m pytest -q evals/deterministic
 ```
 

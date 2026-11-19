@@ -1,8 +1,8 @@
-# 知研 (KnowMe)
+# 知研
 
 **一个无框架、可扩展的 Personal Agent Platform。**
 
-知研（KnowMe）用原生 Python 实现 Agent Loop、会话、上下文管理、记忆、工具调度和运行轨迹，再把这些能力组合成不同的 Agent 与 Application。它以本地数据为中心，提供文档阅读、Agent 自主检索的 RAG、研究笔记和健康管理工作区。
+知研用原生 Python 实现 Agent Loop、会话、上下文管理、记忆、工具调度和运行轨迹，再把这些能力组合成不同的 Agent 与 Application。它以本地数据为中心，提供文档阅读、Agent 自主检索的 RAG 和研究笔记等工作区。
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![uv](https://img.shields.io/badge/package%20manager-uv-DE5FE9)](https://docs.astral.sh/uv/)
@@ -10,14 +10,14 @@
 
 [English](README.en.md)
 
-![KnowMe Web 工作区](docs/images/chat.jpg)
+![知研 Web 工作区](docs/images/chat.jpg)
 
-![KnowMe Web 总览](docs/images/overview.jpg)
+![知研 Web 总览](docs/images/overview.jpg)
 
 
 ## 为什么是一个 Platform
 
-KnowMe 的核心不是某一个固定助手，而是一套可以反复组合的个人 Agent 运行底座：
+知研 的核心不是某一个固定助手，而是一套可以反复组合的个人 Agent 运行底座：
 - **Agents** 每个 Agent 由提示词、工具范围、模型、上下文策略和运行预算组成，共用同一个 `AgentRuntime`。
 - **Application** Application 可以维护文档、选区、项目文件等页面状态，再通过 Context Bridge 把当前工作现场交给 Agent。
 - **运行过程可视化。** 一轮对话里的记忆门控、上下文压缩、模型迭代、工具调用、工作流节点、耗时和 Token 都会进入 Web 时间线。
@@ -26,22 +26,17 @@ KnowMe 的核心不是某一个固定助手，而是一套可以反复组合的�
 这里的“无框架”指 Agent 编排层不依赖 LangChain、LangGraph、CrewAI 等框架，并不表示项目没有第三方依赖。Web 服务使用 Python 标准库，默认存储使用 SQLite，前端是原生 HTML、CSS 和 JavaScript，没有构建步骤。
 ## Web 工作区
 
-KnowMe 把同一套运行时组织成三个层次：
+知研 把同一套运行时组织成三个层次：
 
 | 层次 | 当前内置内容 | 作用 |
 | --- | --- | --- |
-| **Agents** | General、Research、Health | 用不同提示词和工具范围处理日常、研究和健康任务 |
-| **Applications** | 阅读器与文档库、知识库、深度研究、健康 · 训练 | 给 Agent 提供具体工作场景、状态和交互界面 |
+| **Agents** | General、Research、Exam、Language | 用不同提示词和工具范围处理日常、研究、学习任务 |
+| **Applications** | 阅读器与文档库、知识库、深度研究、考试学习、语言学习 | 给 Agent 提供具体工作场景、状态和交互界面 |
 | **Management** | 总览、运维、记忆管理、行为、模型、连接 | 查看运行状态并管理模型、记忆和外部集成 |
 
 Reader 还有一个嵌在阅读器中的专用 Agent。它会收到当前文档和选区，而不是脱离材料自由回答。
 
-Health Agent 则是有手的那种：它读写的是健康应用里那六张表（身体指标、训练、饮食、每日目标、
-食物库、计划），你说一句"帮我记一下"它就真往库里写；说"150 克鸡胸肉"它会去食物库查每 100 克的
-数值**自己算**，不凭印象报热量；定计划前会先查你的真实数据，需要依据的结论用搜索工具去找，
-查不到就说这是常规做法而不是研究结论。它不是医生。
-
-![KnowMe 阅读区](docs/images/reader.png)
+![知研 阅读区](docs/images/reader.png)
 
 ### 平台当前提供的能力
 
@@ -55,6 +50,8 @@ Health Agent 则是有手的那种：它读写的是健康应用里那六张表�
 - 可观测性：实时步骤、历史回放、JSONL Trace、Token、耗时和费用统计。
 - 文档操作：文件上传、URL 导入、持久保存、重命名、删除、正文搜索，以及每份文档独立的 Reader 对话。
 - 文档 RAG：自动切块和向量索引，按意思检索，可选重排，返回带页码的原文供 Agent 回答。
+- 学习：考试备考与语言学习两条轨道；资料切单元、按天排期、容量提示、AI 候选卡必须带原文引文、SM-2 复习与复习日志。
+- 语言学习：词汇调度、词表导入、TTS 朗读、听写判分、写作批改和口语练习；不假装做语音识别或发音评分。
 - 模型工作台：在 Web 中配置服务商、API Key、主模型、门控模型和摘要模型，也可添加 OpenAI/Anthropic 兼容端点；embedding 和 reranker 可分别配置服务商与模型。
 
 ## 文档阅读与操作
@@ -62,7 +59,7 @@ Health Agent 则是有手的那种：它读写的是健康应用里那六张表�
 阅读器把文档库、正文和内嵌问答放在同一个工作区：
 
 - **导入与管理**：上传 PDF、Markdown、纯文本、代码、JSON、CSV、HTML、XML，或粘贴公开 HTTP(S) URL。单份文件上限为 **32 MB**；支持列表搜索、重命名和删除。
-- **本地持久化**：原文件保存在 `.knowme/documents/`，提取的正文和元数据存入 SQLite。文档库由整个工作区共享，刷新和重启后仍可打开。
+- **本地持久化**：原文件保存在 `.zhiyan/documents/`，提取的正文和元数据存入 SQLite。文档库由整个工作区共享，刷新和重启后仍可打开。
 - **长 PDF 阅读**：后端支持 HTTP Range，前端用 pdf.js 渲染页面与可选中的文字层；只渲染视野附近的页面，支持页码跳转、文内搜索和 Ctrl + 滚轮缩放。
 - **结合原文提问**：选中文字后可在右侧提问，Context Bridge 把当前文档、文档 ID 和选区交给 Reader Agent；每份文档有自己的对话线程。
 - **按需继续读**：上下文快照中的正文最多 24,000 字，截断时会注明全文长度。Agent 可用 `open_document` 的字符偏移继续读取，也可先检索再核对原文。
@@ -113,10 +110,40 @@ flowchart TD
 
 - **分工与预算**：每个子 Agent 有独立上下文，只能调用 `search_web` 和 `read_webpage`。默认最多 3 轮、每个子问题每轮最多 8 次模型往返，页面可调整预算。
 - **继续还是停止**：代码从真实工具记录提取、去重 URL；没有新增信源或达到轮次上限就进入汇总。后续轮次带上已有发现，提示 Agent 避免重复研究。
-- **报告与保存**：汇总时要求附来源链接、说明证据冲突和未查完的子问题；报告写入知识库的 `research` 文件夹，并保存到 `.knowme/outbox/`。单个子 Agent 失败会记录原因，其余子问题仍继续。
+- **报告与保存**：汇总时要求附来源链接、说明证据冲突和未查完的子问题；报告写入知识库的 `research` 文件夹，并保存到 `.zhiyan/outbox/`。单个子 Agent 失败会记录原因，其余子问题仍继续。
 - **过程可见**：SSE 实时展示规划、轮次、搜索与阅读次数、预算使用和耗时；运行事件同时保存，历史报告可回放研究过程。
 
-可从 **深度研究** 页面、聊天命令 `/deep_research <主题>` 或 `uv run knowme deep_research "<主题>"` 启动，三种入口共用同一实现。代码见 [工作流定义](knowme/graph/workflows/deep_research.py)与 [运行绑定](knowme/ops/deep_research.py)。
+可从 **深度研究** 页面、聊天命令 `/deep_research <主题>` 或 `uv run zhiyan deep_research "<主题>"` 启动，三种入口共用同一实现。代码见 [工作流定义](zhiyan/graph/workflows/deep_research.py)与 [运行绑定](zhiyan/ops/deep_research.py)。
+
+## 学习：考试备考与语言学习
+
+学习功能分成两条轨道，共用同一套「单元 → 计划 → 卡片 → 复习记录」，但计划形状和交互不同：
+
+| | 考试备考 | 语言学习 |
+| --- | --- | --- |
+| 核心问题 | 考纲覆盖与记忆保持 | 词汇量与听说读写练习 |
+| 原子对象 | 教材章节 / 考纲条目 | 词条、听写、文章 |
+| 计划 | 到考试日的单元覆盖，含容量与覆盖率提示 | 每日练习配比：新词、复习、听力、口语、阅读、写作 |
+| 度量 | 单元完成度、卡片正确率 | 活跃词、成熟词、目标词量覆盖、练习分钟 |
+
+工作流：
+
+```text
+上传考纲/教材/课文 → 切出单元 → 按考试日或每日配比排期
+→ 从单元生成候选卡（校验原文引文）→ 用户确认
+→ 每日学习 + 到期复习 → SM-2 更新下次到期
+```
+
+- **资料复用文档库**：学习项目只关联 `documents.id`，不复制文件；Markdown 按标题、PDF 按页码映射、短行大纲按行提取单元。
+- **计划由代码算**：每天不超过可用分钟；考试前覆盖不完会明确显示百分比；重排只从明天开始，旧版本保留。
+- **卡片必须可核对**：AI 生成的卡片先进入待确认区，`source_quote` 必须是单元原文的子串，否则拒收。确认后才进入复习。
+- **复习日志只追加**：卡片上的 `ease/interval/due` 是物化结果，`study_reviews` 才是事实；以后可以按日志重算调度。
+- **语言练习的边界**：TTS 只朗读文本；听写用 transcript 做归一化比对；写作只给修改稿和说明；口语只做对话与反馈，不做语音识别或发音评分。
+- **两个 Agent**：Exam Coach 负责考纲覆盖、计划和按原文出题；Language Tutor 负责词汇、对话纠错和语言练习。工具层按项目 `kind` 再校验一次，跨轨道操作会被拒绝。
+
+页面在 **考试学习**（`#exam`）和 **语言学习**（`#language`）：今日、计划、资料与单元、卡片审核，语言页另有词汇、听力。数据存放在 SQLite 的 `study_*` 表，首次使用才建；音频在 `.zhiyan/study/audio/`。API 是 `POST /api/study`，音频上传/读取是 `POST /api/study/audio/upload` 和 `GET /api/study/audio?id=`。
+
+首版不包含错题本、模拟考、语音识别、Anki 导入导出和 OCR。
 
 ## 技术栈
 
@@ -131,7 +158,7 @@ flowchart TD
 | Web 后端 | `http.server.ThreadingHTTPServer`、SSE | 本地 API、静态文件和实时运行事件 |
 | Web 前端 | 原生 HTML/CSS/JavaScript、Fetch、浏览器 ES module 入口 | 工作区、文档操作、对话与时间线；无需前端构建 |
 | 文档解析与显示 | pypdf、HTMLParser、pdf.js、IntersectionObserver | PDF 提取、HTML 正文提取、PDF 文字层与页面虚拟化 |
-| 本地数据 | SQLite、文件系统、JSON/JSONL | 会话、记忆、笔记、文档、健康记录、配置和轨迹 |
+| 本地数据 | SQLite、文件系统、JSON/JSONL | 会话、记忆、笔记、文档、配置和轨迹 |
 | 个人记忆检索 | SQLite FTS5/BM25、`LIKE` | 事实与经历检索、中文等文本的子串补充匹配 |
 | 文档 RAG | 自研切块器、`urllib`、SQLite 向量 BLOB、纯 Python 余弦计算 | 调用 embedding/rerank 端点、存储向量与召回段落 |
 | 配置与终端 | python-dotenv、Rich | 本地环境配置和终端输出 |
@@ -146,7 +173,7 @@ flowchart TD
 | 能力 | 技术或服务 | 依赖组 / 配置入口 |
 | --- | --- | --- |
 | 本地 embedding / reranker | 例如 Ollama + bge-m3、llama.cpp + bge-reranker-v2-m3 | 自行运行兼容端点，配置 embedding / reranker 角色 |
-| 外部工具 | MCP Python SDK、stdio MCP Server | `mcp`；`.knowme/mcp.json` |
+| 外部工具 | MCP Python SDK、stdio MCP Server | `mcp`；`.zhiyan/mcp.json` |
 | 语义记忆后端 | Supabase / pgvector、Mem0、Zep、LangMem | `supabase` 或 `memory-backends` |
 | 情景记忆后端 | Notion | `notion` |
 | 日历 | Google Calendar API / OAuth、macOS 原生日历工具 | `gcal`；连接页配置 |
@@ -191,18 +218,22 @@ Web 消息
 
 | 模块 | 职责 |
 | --- | --- |
-| `knowme/core/loop.py` | 原生 observe → reason → act 循环 |
-| `knowme/core/runtime.py` | 组装一次完整 Agent Turn |
-| `knowme/core/session.py` | 会话历史、恢复和持久化 |
-| `knowme/core/context/` | 上下文预算、裁剪和摘要策略 |
-| `knowme/core/spec.py` | 可复用的 `AgentSpec` |
-| `knowme/core/tools.py` | 工具 Schema、白名单和执行边界 |
-| `knowme/memory/` | 记忆门控、检索、整理和技能 |
-| `knowme/applications/` | Application 后端与 Context Bridge |
-| `knowme/tools/documents.py` | 文档列表、字面搜索、语义检索和分段读取工具 |
-| `knowme/rag/` | 切块、embedding、向量存储、后台索引与重排 |
-| `knowme/graph/` | 项目自己的图执行器和工作流 |
-| `knowme/ops/web/` | 本地 Web API 与 SSE 流式事件 |
+| `zhiyan/core/loop.py` | 原生 observe → reason → act 循环 |
+| `zhiyan/core/runtime.py` | 组装一次完整 Agent Turn |
+| `zhiyan/core/session.py` | 会话历史、恢复和持久化 |
+| `zhiyan/core/context/` | 上下文预算、裁剪和摘要策略 |
+| `zhiyan/core/spec.py` | 可复用的 `AgentSpec` |
+| `zhiyan/core/tools.py` | 工具 Schema、白名单和执行边界 |
+| `zhiyan/memory/` | 记忆门控、检索、整理和技能 |
+| `zhiyan/applications/` | Application 后端与 Context Bridge |
+| `zhiyan/tools/documents.py` | 文档列表、字面搜索、语义检索和分段读取工具 |
+| `zhiyan/applications/study.py` | 学习项目、单元、两种排期、SM-2、复习日志和音频存储 |
+| `zhiyan/ops/study_cards.py` | 从单元生成候选卡，并校验原文引文 |
+| `zhiyan/ops/study_language.py` | 词表导入、写作批改、听写反馈 |
+| `zhiyan/tools/study.py` | 学习 Agent 的读写工具，按项目 kind 隔离轨道 |
+| `zhiyan/rag/` | 切块、embedding、向量存储、后台索引与重排 |
+| `zhiyan/graph/` | 项目自己的图执行器和工作流 |
+| `zhiyan/ops/web/` | 本地 Web API 与 SSE 流式事件 |
 
 ## 快速开始
 
@@ -212,11 +243,11 @@ Web 消息
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - 任意一个支持工具调用的模型服务商 API Key
 
-克隆仓库后，在项目目录执行：
-
 ```bash
+git clone git@github.com:jingmeiWang1/zhiyan.git
+cd zhiyan
 uv sync
-uv run knowme
+uv run zhiyan
 ```
 
 终端会打印实际访问地址。默认是：
@@ -233,24 +264,24 @@ uv run knowme
 3. 获取或填写模型 ID，保存并设为当前服务商。
 4. 回到 **General** 开始第一段对话。
 
-服务商配置由 Web 写入本地 `.env`；自定义服务商结构保存在 `.knowme/providers.json`。这两个位置都已被 Git 忽略。
+服务商配置由 Web 写入本地 `.env`；自定义服务商结构保存在 `.zhiyan/providers.json`。这两个位置都已被 Git 忽略。
 
 ### 启用文档语义检索（可选）
 
 先在 **模型** 页添加提供 embedding 的自定义服务商。例如，将 `local_ollama` 的协议设为 `openai`、Base URL 设为 `http://127.0.0.1:11434/v1`，并在本机准备好 Ollama 的 `bge-m3` 模型。随后在项目 `.env` 中设置：
 
 ```dotenv
-KNOWME_EMBED_PROVIDER=local_ollama
-KNOWME_EMBED_MODEL=bge-m3
+ZHIYAN_EMBED_PROVIDER=local_ollama
+ZHIYAN_EMBED_MODEL=bge-m3
 ```
 
-重启 KnowMe 后，后台会自动为文档库建立索引。**服务商与模型都配置才会启用**；未配置时仍可阅读文档和做字面搜索。
+重启 知研 后，后台会自动为文档库建立索引。**服务商与模型都配置才会启用**；未配置时仍可阅读文档和做字面搜索。
 
 需要重排时，再登记一个提供 `/rerank` 接口的兼容服务商，例如 `local_rerank`，并设置：
 
 ```dotenv
-KNOWME_RERANK_PROVIDER=local_rerank
-KNOWME_RERANK_MODEL=bge-reranker-v2-m3
+ZHIYAN_RERANK_PROVIDER=local_rerank
+ZHIYAN_RERANK_MODEL=bge-reranker-v2-m3
 ```
 
 上面的服务商 ID 是示例，需要与模型页登记的 ID 一致。embedding、reranker 和聊天模型可以分别使用不同服务；本地服务由用户自行启动。完整配置与实现说明见 [开发指南](docs/DEVELOPMENT_GUIDE.md#文档库的语义检索rag)及 [`.env.example`](.env.example)。
@@ -279,7 +310,7 @@ AgentProfile(
 
 Application 是带状态的工作界面，而不是另一套 Agent Core。一个新的 Application 通常需要：
 
-1. 在 `knowme/applications/` 中实现领域数据和操作。
+1. 在 `zhiyan/applications/` 中实现领域数据和操作。
 2. 增加对应的 Web API 与前端页面。
 3. 用 `ApplicationContextBridge` 发布当前资源、正文、选区或页面状态。
 4. 将渲染后的 Application Context 交给目标 Agent 的下一轮运行。
@@ -289,9 +320,10 @@ Application 是带状态的工作界面，而不是另一套 Agent Core。一个
 ## 数据与安全边界
 
 - Web 服务只监听 `127.0.0.1`。
-- 默认数据位于 `.knowme/`，主要状态存放在 SQLite `state.db`。
+- 默认数据位于 `.zhiyan/`，主要状态存放在 SQLite `state.db`。
 - API Key 保存在本地 `.env`，Web 只显示是否已配置，不回传完整 Key。
 - 对话内容和工具上下文会发送给你选择的模型服务商；文档块与检索问题会发送给配置的 embedding / reranker 端点，本地端点可用于在本机处理这部分数据。
+- 学习项目、单元、卡片和复习日志存放在 SQLite 的 `study_*` 表；上传的听力音频在 `.zhiyan/study/audio/`。生成卡片和写作批改会把对应单元/写作文本发给模型服务商；TTS 朗读使用浏览器自带语音，不经过模型服务商。
 - 连接日历、Notion、搜索或 MCP 后，也会产生相应的外部请求。
 
 完整说明见 [`SECURITY.md`](SECURITY.md)。
@@ -307,7 +339,7 @@ uv sync --extra dev
 运行静态检查和离线测试：
 
 ```bash
-uv run ruff check knowme evals
+uv run ruff check zhiyan evals
 uv run python -m pytest -q evals/deterministic
 ```
 

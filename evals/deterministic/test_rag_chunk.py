@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from itertools import pairwise
 
-from knowme.rag import chunk as C
+from zhiyan.rag import chunk as C
 
 
 def page_window(pages: list[str], first: int, last: int) -> str:

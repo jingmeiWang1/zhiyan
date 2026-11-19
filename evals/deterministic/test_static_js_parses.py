@@ -1,9 +1,9 @@
 """DETERMINISTIC EVAL — the dashboard's JavaScript actually parses.
 
 Written the moment it was needed. A `title=` attribute added to a button
-contained the word knowme wrapped in backticks, inside a template literal:
+contained the word zhiyan wrapped in backticks, inside a template literal:
 
-    title="... the `knowme` partition is never named ..."
+    title="... the `zhiyan` partition is never named ..."
 
 The backticks closed the template literal early and the file stopped parsing.
 Not the button, not the panel — the whole dashboard went blank, and the only
@@ -28,7 +28,7 @@ import subprocess
 
 import pytest
 
-JS_DIR = pathlib.Path(__file__).resolve().parents[2] / "knowme" / "ops" / "static" / "js"
+JS_DIR = pathlib.Path(__file__).resolve().parents[2] / "zhiyan" / "ops" / "static" / "js"
 SCRIPTS = sorted(JS_DIR.glob("*.js"))
 
 

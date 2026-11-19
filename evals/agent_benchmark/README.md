@@ -1,17 +1,17 @@
-# Agent 评测集 v1：90 条任务
+# Agent 评测集 v1：83 条任务
 
-这是一份面向 KnowMe 现有能力的中文合成评测集。先固定问题、前置数据和评分依据，后续再接真实 Agent 运行器。**当前只包含数据与离线校验，不包含模型成绩或自动评分运行器。** 原有 `evals/dataset.jsonl` 保持不变。
+这是一份面向 知研 现有能力的中文合成评测集。先固定问题、前置数据和评分依据，后续再接真实 Agent 运行器。**当前只包含数据与离线校验，不包含模型成绩或自动评分运行器。** 原有 `evals/dataset.jsonl` 保持不变。
 
 | 评测方向 | 数量 | 覆盖内容 | 目标指标 |
 | --- | ---: | --- | --- |
-| Agent Loop / Tools | 30 | 工具选择、参数、依赖顺序、最终数据、追问与不执行 | Success Rate、Tool Accuracy |
+| Agent Loop / Tools | 23 | 工具选择、参数、依赖顺序、最终数据、追问与不执行 | Success Rate、Tool Accuracy |
 | Context Engineering | 30 | 早期信息、长工具输出、旧值修正、多轮计算、约束与未知信息 | Accuracy、Token Saving |
 | Agentic RAG | 30 | 单段检索、跨章节/文档问答、版本冲突、引用、资料不足 | Recall@K、Faithfulness |
-| 合计 | 90 | | |
+| 合计 | 83 | | |
 
 ## 文件与校验
 
-- [loop_tools.jsonl](loop_tools.jsonl)：30 条工具任务。
+- [loop_tools.jsonl](loop_tools.jsonl)：23 条工具任务。
 - [context_engineering.jsonl](context_engineering.jsonl)：30 条长上下文任务。
 - [agentic_rag.jsonl](agentic_rag.jsonl)：30 条文档问答任务。
 - [fixtures/context_histories.json](fixtures/context_histories.json)：6 份固定对话，每份48条消息、约4.7万字符；每份对应5个问题。
@@ -25,7 +25,7 @@ uv run python evals/agent_benchmark/validate.py
 uv run ruff check evals/agent_benchmark
 ```
 
-已有虚拟环境时，也可以用 `python evals/agent_benchmark/validate.py`。脚本检查90条数量、唯一ID/问题、工具Schema与标准参数、前置数据引用、证据原文和字符位置、开发/测试划分。它还会在临时SQLite和目录中执行工具任务的标准调用、核对预期数据，并用项目真实切分器确认RAG证据可以进入索引。不会调用模型、读取API Key或连接外部日历。
+已有虚拟环境时，也可以用 `python evals/agent_benchmark/validate.py`。脚本检查83条数量、唯一ID/问题、工具Schema与标准参数、前置数据引用、证据原文和字符位置、开发/测试划分。它还会在临时SQLite和目录中执行工具任务的标准调用、核对预期数据，并用项目真实切分器确认RAG证据可以进入索引。不会调用模型、读取API Key或连接外部日历。
 
 **校验通过表示材料及标准调用可用，不表示 Agent 已通过评测。**
 

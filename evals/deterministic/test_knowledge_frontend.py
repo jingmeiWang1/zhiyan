@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 
 JS = (Path(__file__).resolve().parents[2]
-      / "knowme" / "ops" / "static" / "js")
+      / "zhiyan" / "ops" / "static" / "js")
 MAIN_JS = JS / "main.js"
 KNOWLEDGE_JS = JS / "knowledge.js"
 VIEWS_JS = JS / "views.js"
@@ -118,7 +118,7 @@ pendingTests.push((function testKnowledgePane() {
 
   return (async () => {
     // --- a page load comes back to the note you were last in ------------------
-    storage["knowme_kb_note"] = "n1";
+    storage["zhiyan_kb_note"] = "n1";
     activeView = "knowledge";
     render();
     await flush();
@@ -149,7 +149,7 @@ pendingTests.push((function testKnowledgePane() {
     newKnowledgeNote();
     assert(el("kb-create-editor").style.display === "block", "新建 shows the create form");
     assert(el("kb-empty-editor").style.display === "none", "and hides the welcome panel");
-    assert(!("knowme_kb_note" in storage), "新建 forgets the remembered note");
+    assert(!("zhiyan_kb_note" in storage), "新建 forgets the remembered note");
 
     // --- creating a note must not re-open the one you were in before ---------
     const getsBefore = gets.length;
@@ -164,9 +164,9 @@ pendingTests.push((function testKnowledgePane() {
 
     // --- deleting forgets the note, so a reload cannot chase a dead id -------
     await viewKnowledgeNote("n1");
-    assert(storage["knowme_kb_note"] === "n1", "opening a note remembers it");
+    assert(storage["zhiyan_kb_note"] === "n1", "opening a note remembers it");
     await deleteKnowledgeNote();
-    assert(!("knowme_kb_note" in storage), "deleting it forgets it");
+    assert(!("zhiyan_kb_note" in storage), "deleting it forgets it");
     assert(el("kb-note-detail").style.display === "none", "and closes the detail pane");
   })();
 })());

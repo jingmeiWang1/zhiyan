@@ -1,12 +1,12 @@
 """DETERMINISTIC EVAL — the browser gateway's shared agent survives a swap.
 
 The dashboard is the one gateway that is both multi-threaded and long-lived, so
-it keeps a single KnowMe behind `knowme.ops.browser_agent`. Two callers mutate it:
+it keeps a single Zhiyan behind `zhiyan.ops.browser_agent`. Two callers mutate it:
 web.py builds it on the first chat, settings_api rebuilds it when you
 change provider or model. This pins the part that is easy to get wrong.
 
 The bug this was written for: changing ANY setting rebuilt the agent, and a
-fresh KnowMe starts on the eternal 'default' session. So one visit to the Settings
+fresh Zhiyan starts on the eternal 'default' session. So one visit to the Settings
 tab silently moved you into a different conversation — your chat was still in
 the database, just no longer the thread the dock was showing. It looked like
 data loss and was reported as one.
@@ -16,15 +16,15 @@ from __future__ import annotations
 
 import pytest
 
-from knowme.ops import browser_agent
+from zhiyan.ops import browser_agent
 
 
 @pytest.fixture
 def isolated(tmp_path, monkeypatch):
     """A throwaway home + a clean module global, so these tests never see (or
     leave behind) the real dashboard's agent."""
-    monkeypatch.setenv("KNOWME_HOME", str(tmp_path))
-    monkeypatch.setenv("KNOWME_PROVIDER", "anthropic")
+    monkeypatch.setenv("ZHIYAN_HOME", str(tmp_path))
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "anthropic")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key-for-tests")
     monkeypatch.setattr(browser_agent, "_agent", None)
     monkeypatch.setattr(browser_agent, "_dashboard_session", None)
@@ -77,7 +77,7 @@ def test_the_page_and_the_first_turn_agree_on_the_thread(isolated, monkeypatch):
     once a second has passed, so a same-second double call would pass this test
     even when the bug is present.
     """
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
     first = browser_agent.get_agent()
     old = first.session.session_id
     first.conn.execute(
@@ -119,7 +119,7 @@ def test_a_failed_rebuild_keeps_the_working_agent(isolated, monkeypatch):
     def explode(*a, **k):
         raise SystemExit("no API key found")     # what get_client actually raises
 
-    monkeypatch.setattr("knowme.app.KnowMe", explode)
+    monkeypatch.setattr("zhiyan.app.Zhiyan", explode)
 
     error = browser_agent.rebuild()
     assert error and "no API key" in error

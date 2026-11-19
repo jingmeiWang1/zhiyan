@@ -42,7 +42,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-JS = ROOT / "knowme" / "ops" / "static" / "js"
+JS = ROOT / "zhiyan" / "ops" / "static" / "js"
 FROZEN = Path(__file__).resolve().parent / "data" / "graph_charts_frozen.json"
 
 # One harness. `hot` is stubbed to RECORD what it was asked to light, because
@@ -376,9 +376,9 @@ process.exit(failures ? 1 : 0);   // without this, a FAILED run still exits 0
 
 
 def _topologies() -> dict:
-    from knowme.graph.workflows.deep_research import deep_research_topology
-    from knowme.graph.workflows.gather import gather_topology
-    from knowme.graph.workflows.triage import triage_topology
+    from zhiyan.graph.workflows.deep_research import deep_research_topology
+    from zhiyan.graph.workflows.gather import gather_topology
+    from zhiyan.graph.workflows.triage import triage_topology
 
     frozen = json.loads(FROZEN.read_text(encoding="utf-8"))
     return {
@@ -418,7 +418,7 @@ def test_every_assertion_in_the_harness_ran_and_passed(chart_run: str):
 def test_deep_research_is_served_to_the_chart():
     """The chart draws whatever /api/data serves, so a workflow missing from that
     list has no picture no matter how good graphSVG is."""
-    from knowme.ops.web import data as web_data
+    from zhiyan.ops.web import data as web_data
 
     served = [w["name"] for w in web_data.collect("default")["graph"]["workflows"]]
     assert served == ["triage", "gather", "deep_research"], served

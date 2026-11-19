@@ -19,15 +19,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from knowme.applications import library
-from knowme.core import custom_providers
-from knowme.db import connect
-from knowme.rag import index as index_mod
-from knowme.rag import worker
-from knowme.rag.embed import EmbedError, embed_texts
-from knowme.rag.query import RECALL, semantic_search
-from knowme.rag.rerank import DOC_CHARS, rerank_scores
-from knowme.rag.store import ERROR, QUEUED, READY, all_states, pack, search, unpack
+from zhiyan.applications import library
+from zhiyan.core import custom_providers
+from zhiyan.db import connect
+from zhiyan.rag import index as index_mod
+from zhiyan.rag import worker
+from zhiyan.rag.embed import EmbedError, embed_texts
+from zhiyan.rag.query import RECALL, semantic_search
+from zhiyan.rag.rerank import DOC_CHARS, rerank_scores
+from zhiyan.rag.store import ERROR, QUEUED, READY, all_states, pack, search, unpack
 
 DIM = 64
 
@@ -121,15 +121,15 @@ def endpoint(tmp_path):
         "base_url": base, "model": "fake-rerank"})
     # provider_key() reads these env vars for a custom provider; without one
     # client_for would refuse to build a client at all.
-    os.environ["KNOWME_CUSTOM_FAKE_EMBED_API_KEY"] = "test-key"
-    os.environ["KNOWME_CUSTOM_FAKE_RERANK_API_KEY"] = "test-key"
+    os.environ["ZHIYAN_CUSTOM_FAKE_EMBED_API_KEY"] = "test-key"
+    os.environ["ZHIYAN_CUSTOM_FAKE_RERANK_API_KEY"] = "test-key"
     try:
         yield server
     finally:
         server.shutdown()
         server.server_close()
-        os.environ.pop("KNOWME_CUSTOM_FAKE_EMBED_API_KEY", None)
-        os.environ.pop("KNOWME_CUSTOM_FAKE_RERANK_API_KEY", None)
+        os.environ.pop("ZHIYAN_CUSTOM_FAKE_EMBED_API_KEY", None)
+        os.environ.pop("ZHIYAN_CUSTOM_FAKE_RERANK_API_KEY", None)
 
 
 def make_settings(home, provider="fake_embed", model="fake-embed", rerank=""):
@@ -139,7 +139,7 @@ def make_settings(home, provider="fake_embed", model="fake-embed", rerank=""):
     maintainer's own .env is loaded at import time, so "not configured" has to be
     stated here or this suite would measure their machine.
     """
-    from knowme.config import Settings
+    from zhiyan.config import Settings
 
     settings = Settings()
     settings.home = home
@@ -180,7 +180,7 @@ def test_search_ranks_by_cosine_and_honours_the_document_filter(tmp_path):
     conn = connect(tmp_path)
     a = library.save_document(conn, tmp_path, name="a.md", raw=b"a", text="x")
     b = library.save_document(conn, tmp_path, name="b.md", raw=b"b", text="x")
-    from knowme.rag.store import normalize, replace_chunks
+    from zhiyan.rag.store import normalize, replace_chunks
 
     replace_chunks(conn, a["id"], [
         (0, None, None, "光合作用", normalize(fake_vector("photosynthesis plants"))),
@@ -204,7 +204,7 @@ def test_a_vector_of_the_wrong_width_is_skipped_not_misread(tmp_path):
     wrong stride would produce a number, and the number would be nonsense."""
     conn = connect(tmp_path)
     doc = library.save_document(conn, tmp_path, name="a.md", raw=b"a", text="x")
-    from knowme.rag.store import replace_chunks
+    from zhiyan.rag.store import replace_chunks
 
     replace_chunks(conn, doc["id"], [(0, None, None, "旧模型建的", [1.0, 0.0, 0.0])])
     assert search(conn, [1.0, 0.0], k=5) == []
@@ -242,7 +242,7 @@ def test_an_endpoint_error_becomes_a_message_and_not_a_traceback(rag, endpoint):
 
 
 def test_nothing_configured_is_a_sentence_not_an_exception(tmp_path):
-    from knowme.config import Settings
+    from zhiyan.config import Settings
 
     settings = Settings()
     settings.home = tmp_path
@@ -250,7 +250,7 @@ def test_nothing_configured_is_a_sentence_not_an_exception(tmp_path):
     with pytest.raises(EmbedError, match="未启用") as raised:
         embed_texts(settings, ["hello"])
     # …and the message says what to set, not just that something is missing.
-    assert "KNOWME_EMBED_MODEL" in str(raised.value)
+    assert "ZHIYAN_EMBED_MODEL" in str(raised.value)
 
 
 # --- indexing ----------------------------------------------------------------
@@ -400,13 +400,13 @@ def test_both_library_endpoints_carry_the_index_state(rag, monkeypatch):
     response with no `document` key at all, and the reader then refused to open
     *anything* — with no error on screen and nothing in the console.
 
-    The settings are injected at the seam rather than through KNOWME_HOME: this
+    The settings are injected at the seam rather than through ZHIYAN_HOME: this
     route builds its own Settings and connection, and pointing it at the right
     home through the environment quietly stopped working once other test modules
     had run — the same call passed on its own and failed in the suite.
     """
-    import knowme.ops.web.data as web_data
-    from knowme.ops.web.data import library_action
+    import zhiyan.ops.web.data as web_data
+    from zhiyan.ops.web.data import library_action
 
     settings, conn, home = rag
     monkeypatch.setattr(web_data, "load_settings", lambda: settings)
@@ -432,9 +432,9 @@ def test_reindex_puts_a_failed_document_back_in_the_queue(rag, monkeypatch):
     """The only way back from 索引失败. The worker deliberately never retries a
     failed row, so without this the document stays unsearchable for ever and
     there is nothing on screen that can change it."""
-    import knowme.ops.web.data as web_data
-    from knowme.ops.web.data import library_action
-    from knowme.rag import store
+    import zhiyan.ops.web.data as web_data
+    from zhiyan.ops.web.data import library_action
+    from zhiyan.rag import store
 
     settings, conn, home = rag
     monkeypatch.setattr(web_data, "load_settings", lambda: settings)
@@ -452,7 +452,7 @@ def test_reindex_puts_a_failed_document_back_in_the_queue(rag, monkeypatch):
 
 
 def test_the_tool_tells_the_model_when_semantic_search_is_not_configured(tmp_path):
-    from knowme.tools.documents import make_document_tools
+    from zhiyan.tools.documents import make_document_tools
 
     conn = connect(tmp_path)
     tools = make_document_tools(conn, tmp_path)          # no settings at all
@@ -461,7 +461,7 @@ def test_the_tool_tells_the_model_when_semantic_search_is_not_configured(tmp_pat
 
 
 def test_the_tool_returns_passages_with_their_document_and_page(rag):
-    from knowme.tools.documents import make_document_tools
+    from zhiyan.tools.documents import make_document_tools
 
     settings, conn, home = rag
     doc = save(conn, home, "paper.md", "# 一\n\n" + "光合作用把光能变成化学能。" * 30)

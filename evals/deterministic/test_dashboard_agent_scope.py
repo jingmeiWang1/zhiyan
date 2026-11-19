@@ -5,12 +5,12 @@ labels each row with who recorded it. Conversations are not shared, so chat_log
 (and the sessions list) is still trimmed to the Agent you are looking at — the
 second half of that split is what this file pins now."""
 
-from knowme.config import Settings
-from knowme.db import connect
+from zhiyan.config import Settings
+from zhiyan.db import connect
 
 
 def test_collect_shares_memory_and_scopes_chat(tmp_path, monkeypatch):
-    from knowme.ops import web
+    from zhiyan.ops import web
 
     settings = Settings(home=tmp_path)
     settings.ensure_home()
@@ -56,7 +56,7 @@ def test_collect_shares_memory_and_scopes_chat(tmp_path, monkeypatch):
 
 
 def test_collect_rejects_unknown_agent(tmp_path, monkeypatch):
-    from knowme.ops import web
+    from zhiyan.ops import web
 
     settings = Settings(home=tmp_path)
     monkeypatch.setattr(web, "load_settings", lambda: settings)

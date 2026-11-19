@@ -1,7 +1,7 @@
 """DETERMINISTIC EVAL — finding the user's .env, and saying so when we cannot.
 
-Reported 2026-07-31 from a clean install: standing in the knowme-agent folder,
-with a .env holding a valid ANTHROPIC_API_KEY, `knowme brief` answered
+Reported 2026-07-31 from a clean install: standing in the zhiyan-agent folder,
+with a .env holding a valid ANTHROPIC_API_KEY, `zhiyan brief` answered
 
     No API key for provider 'anthropic'. Set ANTHROPIC_API_KEY in .env
     (see .env.example).
@@ -27,18 +27,18 @@ import subprocess
 import sys
 import textwrap
 
-from knowme.loop import models
+from zhiyan.loop import models
 
-from knowme import config
+from zhiyan import config
 
 
 def test_dotenv_is_found_from_the_working_directory():
     """THE regression. `find_dotenv()` without usecwd resolves relative to
-    knowme's own source; the user is standing somewhere else entirely."""
+    zhiyan's own source; the user is standing somewhere else entirely."""
     src = inspect.getsource(config._load_env)
     assert "usecwd=True" in src, (
-        "load_dotenv is searching from knowme's install location again — an "
-        "installed KnowMe will ignore the user's .env and claim it has no key"
+        "load_dotenv is searching from zhiyan's install location again — an "
+        "installed Zhiyan will ignore the user's .env and claim it has no key"
     )
 
 
@@ -50,7 +50,7 @@ def test_the_loaded_path_is_recorded():
 
 
 def test_a_subdirectory_still_finds_the_project_env(tmp_path):
-    """The upward walk is kept deliberately: running `knowme` from a subfolder of
+    """The upward walk is kept deliberately: running `zhiyan` from a subfolder of
     your project should find the .env at its root, the rule git and pytest
     already taught everyone. Only the STARTING POINT changes."""
     root = tmp_path / "proj"
@@ -77,7 +77,7 @@ def test_a_subdirectory_still_finds_the_project_env(tmp_path):
 
 def test_the_error_never_points_at_a_file_pip_users_do_not_have():
     """.env.example ships only in the git checkout. Telling someone who ran
-    `pip install knowme-agent` to 'see .env.example' is a dead end, and it was
+    `pip install zhiyan-agent` to 'see .env.example' is a dead end, and it was
     the ONLY instruction the old message gave."""
     msg = models._no_key_message("anthropic", "ANTHROPIC_API_KEY")
     assert ".env.example" not in msg
@@ -98,13 +98,13 @@ def test_the_error_names_the_env_file_in_play():
 
 
 def test_the_error_mentions_the_other_providers():
-    """KnowMe speaks to eleven providers. Naming one made it look like a
+    """Zhiyan speaks to eleven providers. Naming one made it look like a
     single-vendor tool to anyone who hit this on their first run — which is
     everyone who hits it."""
     msg = models._no_key_message("anthropic", "ANTHROPIC_API_KEY")
     for other in ("openai", "gemini", "openrouter"):
         assert other in msg
-    assert "KNOWME_PROVIDER" in msg
+    assert "ZHIYAN_PROVIDER" in msg
 
 
 def test_every_provider_has_somewhere_to_get_a_key():

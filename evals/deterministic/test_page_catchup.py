@@ -73,7 +73,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-JS = ROOT / "knowme" / "ops" / "static" / "js"
+JS = ROOT / "zhiyan" / "ops" / "static" / "js"
 
 # chat.js and deepresearch.js both author their view at load time (VIEWS.agent,
 # VIEWS.deepresearch) and both read localStorage at load time. Everything they
@@ -422,7 +422,7 @@ def test_the_prefix_the_page_matches_on_is_the_one_the_workflow_writes():
     renames the report, the fallback silently stops finding anything — and the
     only symptom would be a blank report page after a refresh. The two files are
     a pair, so they are compared here rather than trusted."""
-    from knowme.ops.deep_research import _note_title
+    from zhiyan.ops.deep_research import _note_title
 
     page = (JS / "deepresearch.js").read_text(encoding="utf-8")
     found = re.search(r'RESEARCH_NOTE_PREFIX\s*=\s*"([^"]+)"', page)

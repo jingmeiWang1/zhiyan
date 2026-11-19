@@ -7,9 +7,9 @@ a fake token measure so no real compressor has to be provoked.
 
 from __future__ import annotations
 
-from knowme.config import Settings
-from knowme.core.context import policy as pol
-from knowme.core.context.policy import ContextPolicy, FitContext, Stage
+from zhiyan.config import Settings
+from zhiyan.core.context import policy as pol
+from zhiyan.core.context.policy import ContextPolicy, FitContext, Stage
 
 
 def _ctx(tmp_path, over: bool) -> FitContext:
@@ -111,7 +111,7 @@ def test_runtime_fills_the_reserve_and_the_schema_cost(tmp_path):
     """The policy math above is only correct if runtime hands it both numbers."""
     from dataclasses import replace
 
-    from evals.helpers import ScriptedClient, make_knowme, response, text_block
+    from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
 
     seen = {}
 
@@ -120,7 +120,7 @@ def test_runtime_fills_the_reserve_and_the_schema_cost(tmp_path):
         seen["reserve"] = ctx.reserve_tokens
 
     gate = response([text_block('{"retrieve": false, "query": "", "reason": "x"}')])
-    app = make_knowme(
+    app = make_zhiyan(
         tmp_path / "home",
         client=ScriptedClient([gate, response([text_block("ok")])]),
     )

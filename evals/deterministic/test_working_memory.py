@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import re
 
-from knowme.runtime.session import Session
+from zhiyan.runtime.session import Session
 
-from knowme.config import load_settings
+from zhiyan.config import load_settings
 
 
 def test_the_turn_carries_the_current_time():
@@ -90,13 +90,13 @@ def test_the_turn_context_is_not_persisted(tmp_path):
       2. `messages` handed to run_loop is a fresh list (history[-window:] + [..]),
          so run_loop's in-place appends cannot touch session.history.
     """
-    from evals.helpers import ScriptedClient, make_knowme, response, text_block
+    from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
 
     client = ScriptedClient([
         response([text_block('{"retrieve": false}')]),   # the retrieval gate
         response([text_block("Booked.")]),               # the loop's reply
     ])
-    app = make_knowme(tmp_path, client=client)
+    app = make_zhiyan(tmp_path, client=client)
     app.respond("book a court")
 
     rows = [r["content"] for r in app.conn.execute("select content from chat_log")]

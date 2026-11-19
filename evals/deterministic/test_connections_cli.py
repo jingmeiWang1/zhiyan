@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from knowme import integrations
-from knowme.integrations import IntegrationState, IntegrationStatus
+from zhiyan import integrations
+from zhiyan.integrations import IntegrationState, IntegrationStatus
 
 
 def test_cli_returns_failure_for_configured_error(monkeypatch, tmp_path):
-    monkeypatch.setenv("KNOWME_HOME", str(tmp_path))
+    monkeypatch.setenv("ZHIYAN_HOME", str(tmp_path))
     monkeypatch.setenv("OPENAI_API_KEY", "key")
     integrations._HEALTH = None
     integrations.record_health("openai", IntegrationStatus(IntegrationState.ERROR, "bad key"))

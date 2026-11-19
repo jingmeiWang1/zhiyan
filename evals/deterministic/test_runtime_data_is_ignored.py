@@ -1,14 +1,14 @@
 """DETERMINISTIC EVAL — runtime data and secrets never become commits.
 
-knowme runs on people's own machines with their own keys, and it writes a lot of
+zhiyan runs on people's own machines with their own keys, and it writes a lot of
 personal state: facts about the user, their calendar, a spend ledger, message
 outboxes, traces of every turn. None of it belongs in git. This pins the
 .gitignore rules that keep it out, because that file is edited by hand and a
 missing line is invisible until the day it isn't.
 
-The gap this protects against: .gitignore once listed `.knowme/` by exact name,
-so alternate homes such as `.knowme-secondary/` matched nothing and their
-SOUL.md, usage.jsonl and outbox could be tracked. `.knowme-*/` closes that hole.
+The gap this protects against: .gitignore once listed `.zhiyan/` by exact name,
+so alternate homes such as `.zhiyan-secondary/` matched nothing and their
+SOUL.md, usage.jsonl and outbox could be tracked. `.zhiyan-*/` closes that hole.
 
 These call `git check-ignore`, so they test what git ACTUALLY does with the
 committed .gitignore — not what a regex here thinks it should do.
@@ -32,12 +32,12 @@ def ignored(rel: str) -> bool:
 
 
 # Every runtime artifact a home can hold, for the DEFAULT home and for an
-# alternate one (any KNOWME_HOME a user points elsewhere).
+# alternate one (any ZHIYAN_HOME a user points elsewhere).
 ARTIFACTS = ["state.db", "SOUL.md", "usage.jsonl", "calendar.ics",
              "traces/2026-07-26.jsonl", "outbox/msg-1.txt"]
 
 
-@pytest.mark.parametrize("home", [".knowme", ".knowme-secondary", ".knowme-demo"])
+@pytest.mark.parametrize("home", [".zhiyan", ".zhiyan-secondary", ".zhiyan-demo"])
 @pytest.mark.parametrize("artifact", ARTIFACTS)
 def test_no_agent_home_leaks_its_runtime_data(home, artifact):
     """A second agent home is normal for a demo or experiment. Every one of
@@ -74,7 +74,7 @@ def test_nothing_from_a_runtime_home_is_currently_tracked():
     ).stdout.splitlines()
     leaked = [f for f in tracked
               if f not in allowed
-              and (f.startswith((".knowme", ".env"))
+              and (f.startswith((".zhiyan", ".env"))
                    or f.endswith(("credentials.json", "token.json")))]
     assert leaked == [], f"private files are in the index: {leaked}"
 
@@ -87,6 +87,6 @@ def test_the_env_template_carries_no_real_values():
     filled = [ln for ln in lines
               if "=" in ln and not ln.lstrip().startswith("#")
               and ln.split("=", 1)[1].strip().strip("\"'")]
-    # KNOWME_PROVIDER is a non-secret default and is meant to have a value.
-    unexpected = [ln for ln in filled if not ln.startswith("KNOWME_PROVIDER=")]
+    # ZHIYAN_PROVIDER is a non-secret default and is meant to have a value.
+    unexpected = [ln for ln in filled if not ln.startswith("ZHIYAN_PROVIDER=")]
     assert unexpected == [], f"values committed in .env.example: {unexpected}"

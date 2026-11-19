@@ -22,7 +22,7 @@ assertion — the difference matters for this scored evaluation.
 Two things the issue asks for that a plain accuracy number cannot express:
 
 **The two error directions are not symmetric.** A false NO is the expensive
-one: the user told KnowMe something, the gate refused to look, and the fact is
+one: the user told Zhiyan something, the gate refused to look, and the fact is
 silently absent from the reply. A false YES costs one FTS5 search and a few
 hundred characters of prompt. So the headline is a COST-WEIGHTED score (see
 ``FALSE_NEGATIVE_COST``), the two directions are reported under their own
@@ -45,7 +45,7 @@ from dataclasses import dataclass
 import pytest
 
 from evals.helpers import HAS_KEY
-from knowme.memory.retrieval_gate import should_retrieve
+from zhiyan.memory.retrieval_gate import should_retrieve
 
 pytestmark = pytest.mark.skipif(not HAS_KEY, reason="LLM-as-judge needs the active provider's API key")
 
@@ -53,10 +53,10 @@ pytestmark = pytest.mark.skipif(not HAS_KEY, reason="LLM-as-judge needs the acti
 # headline score can weight them instead of averaging them away.
 #
 #   false NO  — the gate declined to search when it should have. The fact the
-#               user told KnowMe is simply not in the prompt, so the reply is
+#               user told Zhiyan is simply not in the prompt, so the reply is
 #               confidently wrong or asks a question it was already told the
 #               answer to. Nothing in the trace says "memory was skipped and
-#               that was the mistake"; it just looks like KnowMe forgot.
+#               that was the mistake"; it just looks like Zhiyan forgot.
 #   false YES — the gate searched when it did not need to. Cost: one FTS5
 #               query (microseconds, local) and a few hundred characters of
 #               prompt. Occasionally an irrelevant fact nudges the answer.
@@ -206,7 +206,7 @@ DATASET: list[GateCase] = [
 
     # ── Category 4: A question whose answer memory does not contain
     #
-    # The user asks something personal that KnowMe has no memory of. The gate
+    # The user asks something personal that Zhiyan has no memory of. The gate
     # SHOULD still retrieve — the gate's job is to decide "does this need
     # memory?", not "will memory succeed?". A personal question always
     # warrants a search.
@@ -272,13 +272,13 @@ def gate_results():
     The gate is stateless (it decides from the message alone), so
     caching is safe.
     """
-    from knowme.loop.models import PROVIDERS, get_client
+    from zhiyan.loop.models import PROVIDERS, get_client
 
-    from knowme.config import load_settings
+    from zhiyan.config import load_settings
 
     settings = load_settings()
     client = get_client(settings)
-    # Fall back to the provider's default small model when KNOWME_SMALL_MODEL
+    # Fall back to the provider's default small model when ZHIYAN_SMALL_MODEL
     # is unset — the gate needs a concrete model id to call.
     small_model = settings.small_model or PROVIDERS[settings.provider].small_model
 
@@ -417,7 +417,7 @@ def query_metric():
     The keyword clause is load-bearing too. Without it the judge reached for
     semantic-search intuitions and marked ``dog name`` down for "missing the
     personalization aspect ('my')" — but this query is handed to
-    ``knowme/memory/semantic/store.py::_fts_query``, which strips to alphanumeric
+    ``zhiyan/memory/semantic/store.py::_fts_query``, which strips to alphanumeric
     tokens and ORs them, so "my" would buy exactly nothing. Hence the worked
     example in the steps: an anchor beats an adjective.
 
@@ -591,7 +591,7 @@ def test_gate_accuracy_summary(gate_results):
         (f"    Missed retrievals (false NO):    {fn} of {positives}   "
          f"miss rate {miss_rate:.1%}"),
         "      The expensive direction. The gate refused to look, so a fact the",
-        "      user told KnowMe is absent from the reply and nothing says why.",
+        "      user told Zhiyan is absent from the reply and nothing says why.",
         "",
         (f"    Needless retrievals (false YES): {fp} of {negatives}   "
          f"false-alarm rate {false_alarm_rate:.1%}"),

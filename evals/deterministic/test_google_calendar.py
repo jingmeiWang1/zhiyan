@@ -5,10 +5,10 @@ from __future__ import annotations
 import sys
 from types import ModuleType
 
-from evals.helpers import ScriptedClient, make_knowme
-from knowme.config import Settings
-from knowme.db import connect
-from knowme.tools import calendar
+from evals.helpers import ScriptedClient, make_zhiyan
+from zhiyan.config import Settings
+from zhiyan.db import connect
+from zhiyan.tools import calendar
 
 
 def _install_fake_google_modules(monkeypatch, *, execute_error: Exception | None = None):
@@ -81,13 +81,13 @@ def _install_fake_google_modules(monkeypatch, *, execute_error: Exception | None
 
 
 def test_google_calendar_settings_are_opt_in(monkeypatch):
-    monkeypatch.delenv("KNOWME_GOOGLE_CALENDAR", raising=False)
-    monkeypatch.delenv("KNOWME_GOOGLE_CALENDAR_ID", raising=False)
+    monkeypatch.delenv("ZHIYAN_GOOGLE_CALENDAR", raising=False)
+    monkeypatch.delenv("ZHIYAN_GOOGLE_CALENDAR_ID", raising=False)
     assert Settings().google_calendar is False
     assert Settings().google_calendar_id == "primary"
 
-    monkeypatch.setenv("KNOWME_GOOGLE_CALENDAR", "yes")
-    monkeypatch.setenv("KNOWME_GOOGLE_CALENDAR_ID", "team@example.com")
+    monkeypatch.setenv("ZHIYAN_GOOGLE_CALENDAR", "yes")
+    monkeypatch.setenv("ZHIYAN_GOOGLE_CALENDAR_ID", "team@example.com")
     assert Settings().google_calendar is True
     assert Settings().google_calendar_id == "team@example.com"
 
@@ -203,8 +203,8 @@ def test_default_mock_never_calls_google_and_schema_is_unchanged(tmp_path, monke
 
 
 def test_eval_factory_disables_google_even_when_environment_enables_it(tmp_path, monkeypatch):
-    monkeypatch.setenv("KNOWME_GOOGLE_CALENDAR", "1")
-    app = make_knowme(tmp_path, client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_GOOGLE_CALENDAR", "1")
+    app = make_zhiyan(tmp_path, client=ScriptedClient([]))
     try:
         assert app.settings.google_calendar is False
     finally:

@@ -20,8 +20,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from evals.helpers import response, text_block, tool_block
-from knowme.core.loop import run_loop
-from knowme.core.tools import Tool, ToolRegistry
+from zhiyan.core.loop import run_loop
+from zhiyan.core.tools import Tool, ToolRegistry
 
 
 class _Capturing:

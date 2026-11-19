@@ -34,9 +34,9 @@ from __future__ import annotations
 
 import pytest
 
-from knowme.db import connect
-from knowme.memory.episodic.store import SqliteEpisodeStore
-from knowme.memory.semantic.store import SqliteFactStore, _fts_query, _substring_terms
+from zhiyan.db import connect
+from zhiyan.memory.episodic.store import SqliteEpisodeStore
+from zhiyan.memory.semantic.store import SqliteFactStore, _fts_query, _substring_terms
 
 
 @pytest.fixture
@@ -138,9 +138,9 @@ def test_an_unsearchable_query_still_means_no_facts_not_all_facts(facts):
 
 
 def test_underscore_is_a_separator_here_because_it_is_one_in_the_index():
-    """unicode61 splits on `_`, so `knowme_agent` is two terms in the index and
+    """unicode61 splits on `_`, so `zhiyan_agent` is two terms in the index and
     has to be two terms here too, or it matches nothing."""
-    assert _fts_query("knowme_agent") == "knowme OR agent"
+    assert _fts_query("zhiyan_agent") == "zhiyan OR agent"
 
 
 # ---------- the other half of the same failure: the word is in the MIDDLE
@@ -210,8 +210,8 @@ def test_the_gate_query_carries_the_fact_into_the_turn(tmp_path):
     """One step short of the prompt, and the step the user actually saw fail:
     门控选词 → 两个库检索 → 事实进到模型拿到的那段文字里."""
     from evals.helpers import ScriptedClient, response, text_block
-    from knowme.config import load_settings
-    from knowme.memory import Memory
+    from zhiyan.config import load_settings
+    from zhiyan.memory import Memory
 
     settings = load_settings()
     settings.ensure_home()

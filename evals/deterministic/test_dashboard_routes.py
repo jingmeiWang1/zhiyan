@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import inspect
 
-from knowme.ops import web
-from knowme.ops.web import server
+from zhiyan.ops import web
+from zhiyan.ops.web import server
 
 # Every path the POST router accepts.
 POST_ROUTES = {
@@ -34,7 +34,8 @@ POST_ROUTES = {
     "/api/extras",
     "/api/knowledge",
     "/api/library/upload",
-    "/api/health",
+    "/api/study",
+    "/api/study/audio/upload",
 }
 
 # Paths served on GET, either exactly or as a prefix.
@@ -43,6 +44,7 @@ GET_PATHS = {
     "/api/models",
     "/api/events",
     "/api/reveal",
+    "/api/study/audio",
     "/static/",
 }
 
@@ -78,7 +80,7 @@ def test_the_handlers_behind_the_routes_exist_and_are_callable():
     for name in ("collect", "chat", "chat_stream", "graph_stream", "memory_action",
                  "apply_settings", "run_query", "session_action", "pin_action",
                  "list_models", "events_since", "reveal_path", "settings_info",
-                 "tools_info"):
+                 "tools_info", "study_info", "study_action", "study_audio_upload"):
         fn = getattr(web, name, None)
         assert callable(fn), f"handler missing or not callable: {name}"
 
@@ -89,12 +91,12 @@ def test_api_models_returns_picker_contract(monkeypatch):
     import json
     import urllib.request
 
-    from knowme.ops import catalog
+    from zhiyan.ops import catalog
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "openrouter")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "openrouter")
     monkeypatch.setenv("OPENROUTER_API_KEY", "fake-key")
-    monkeypatch.delenv("KNOWME_MODEL", raising=False)
-    monkeypatch.delenv("KNOWME_SMALL_MODEL", raising=False)
+    monkeypatch.delenv("ZHIYAN_MODEL", raising=False)
+    monkeypatch.delenv("ZHIYAN_SMALL_MODEL", raising=False)
 
     def fake_urlopen(req, timeout=10):
         return io.BytesIO(json.dumps(
@@ -121,8 +123,8 @@ def test_collect_returns_the_keys_the_page_reads():
         # Who the payload is FOR: the page refuses an answer about another agent
         # (static/js/main.js refresh). Added 2026-09-22 with that check.
         "agent_id",
-        # The health page reads this (static/js/health.js). Added with the page.
-        "health_info",
+        # The study pages read this; it stays compact (no card bodies).
+        "study_info",
     }
     src = inspect.getsource(web.collect)
     for key in expected:

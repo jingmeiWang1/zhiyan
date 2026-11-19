@@ -10,8 +10,8 @@ that narrower path is asserted too, so it does not rot.
 
 import pytest
 
-from knowme.db import connect
-from knowme.tools.knowledge import (
+from zhiyan.db import connect
+from zhiyan.tools.knowledge import (
     create_note,
     delete_note,
     get_linked_notes,
@@ -73,8 +73,8 @@ def test_dashboard_and_the_agents_tools_both_see_every_note(tmp_path, monkeypatc
     bug ("我现在前端看不到记忆了"): a note saved while talking to one Agent was
     invisible to the next one.
     """
-    from knowme.config import Settings
-    from knowme.ops import web
+    from zhiyan.config import Settings
+    from zhiyan.ops import web
 
     settings = Settings(home=tmp_path)
     settings.ensure_home()

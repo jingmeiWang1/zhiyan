@@ -1,6 +1,6 @@
 """OFFLINE checks for the two ROLE models: the retrieval gate and the summariser
 may each run on their own provider and model, and all four variables empty must
-be exactly what KnowMe did before they existed. No network, no real keys.
+be exactly what Zhiyan did before they existed. No network, no real keys.
 
 Why this file exists: the role path is the one place in a turn that resolves a
 client other than the loop's, and it MUST NOT raise — the gate fails open by
@@ -14,10 +14,10 @@ from __future__ import annotations
 import dataclasses
 
 import pytest
-from knowme.loop.models import PROVIDERS, Roles, role_runs_on, roles_for
+from zhiyan.loop.models import PROVIDERS, Roles, role_runs_on, roles_for
 
-from evals.helpers import ScriptedClient, make_knowme, response, text_block
-from knowme.config import Settings
+from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
+from zhiyan.config import Settings
 
 ROLES = ("gate", "summary")
 
@@ -27,20 +27,20 @@ def fake_keys(monkeypatch):
     """Every provider has a key, so "which provider" is never answered by
     accident. Tests that need a MISSING key take it away themselves.
 
-    KNOWME_MODEL / KNOWME_SMALL_MODEL are cleared too: knowme/config.py calls
+    ZHIYAN_MODEL / ZHIYAN_SMALL_MODEL are cleared too: zhiyan/config.py calls
     load_dotenv() at import, so without this the maintainer's .env decides what
     "all four variables empty" means — and for a provider that happens to own the
-    model named there (minimax, with KNOWME_SMALL_MODEL=MiniMax-M2.5) the answer
+    model named there (minimax, with ZHIYAN_SMALL_MODEL=MiniMax-M2.5) the answer
     changes. A test must describe its own world."""
     for provider in PROVIDERS.values():
         monkeypatch.setenv(provider.key_env, "fake-key-for-tests")
-    monkeypatch.delenv("KNOWME_API_KEY", raising=False)
-    monkeypatch.delenv("KNOWME_BASE_URL", raising=False)
-    monkeypatch.delenv("KNOWME_MODEL", raising=False)
-    monkeypatch.delenv("KNOWME_SMALL_MODEL", raising=False)
+    monkeypatch.delenv("ZHIYAN_API_KEY", raising=False)
+    monkeypatch.delenv("ZHIYAN_BASE_URL", raising=False)
+    monkeypatch.delenv("ZHIYAN_MODEL", raising=False)
+    monkeypatch.delenv("ZHIYAN_SMALL_MODEL", raising=False)
     for role in ROLES:
-        monkeypatch.delenv(f"KNOWME_{role.upper()}_PROVIDER", raising=False)
-        monkeypatch.delenv(f"KNOWME_{role.upper()}_MODEL", raising=False)
+        monkeypatch.delenv(f"ZHIYAN_{role.upper()}_PROVIDER", raising=False)
+        monkeypatch.delenv(f"ZHIYAN_{role.upper()}_MODEL", raising=False)
 
 
 def settings_for(provider: str, **kwargs) -> Settings:
@@ -81,7 +81,7 @@ def capture_clients(monkeypatch) -> list:
     other — and the two providers below are exactly one of each."""
     import anthropic
 
-    from knowme.core import models
+    from zhiyan.core import models
 
     built: list = []
 
@@ -124,7 +124,7 @@ def test_a_role_can_run_on_another_providers_wire(host, monkeypatch):
 
 @pytest.mark.parametrize("host", ROLE_HOSTS)
 def test_the_active_providers_credentials_are_not_handed_to_a_second_one(host, monkeypatch):
-    """KNOWME_API_KEY/KNOWME_BASE_URL are ONE pair belonging to the active
+    """ZHIYAN_API_KEY/ZHIYAN_BASE_URL are ONE pair belonging to the active
     provider (that is how the Models page writes them). Handing them to a second
     provider posts one lab's endpoint another lab's key."""
     built = capture_clients(monkeypatch)
@@ -154,8 +154,8 @@ def test_a_foreign_model_id_is_dropped_for_a_role_too():
 
 def test_a_role_that_follows_the_active_provider_gets_the_resolved_small_model(monkeypatch):
     """The leftover-model case the guard now also covers: switch provider, and a
-    KNOWME_GATE_MODEL from the old one must not follow you across."""
-    monkeypatch.setenv("KNOWME_GATE_MODEL", "claude-haiku-4-5-20251001")
+    ZHIYAN_GATE_MODEL from the old one must not follow you across."""
+    monkeypatch.setenv("ZHIYAN_GATE_MODEL", "claude-haiku-4-5-20251001")
     settings = settings_for("xai", gate_model="claude-haiku-4-5-20251001")
     assert role_runs_on(settings, "gate")[:2] == ("xai", PROVIDERS["xai"].small_model)
 
@@ -194,7 +194,7 @@ def test_the_page_is_told_what_actually_runs(monkeypatch):
     — through role_runs_on, the same function roles_for uses. A page that showed
     the provider you named while the turns ran on another one would make the
     choice look applied and do nothing."""
-    from knowme.ops.settings_api import roles_info
+    from zhiyan.ops.settings_api import roles_info
 
     settings = settings_for("deepseek", gate_provider="kimi")   # kimi HAS a key here
     info = roles_info(settings)["gate"]
@@ -216,56 +216,56 @@ def test_the_page_is_told_what_actually_runs(monkeypatch):
 def test_settings_saves_the_roles_and_can_put_them_back_to_follow(tmp_path, monkeypatch):
     """`is not None` and not `if value:`: "" is how you go back to 「跟随当前
     服务商」, and a falsy test would make that a one-way door."""
-    from knowme.ops import settings_api
+    from zhiyan.ops import settings_api
 
     monkeypatch.chdir(tmp_path)
     for role in ROLES:
-        monkeypatch.setenv(f"KNOWME_{role.upper()}_PROVIDER", "SENTINEL")
-        monkeypatch.setenv(f"KNOWME_{role.upper()}_MODEL", "SENTINEL")
+        monkeypatch.setenv(f"ZHIYAN_{role.upper()}_PROVIDER", "SENTINEL")
+        monkeypatch.setenv(f"ZHIYAN_{role.upper()}_MODEL", "SENTINEL")
 
     settings_api.apply_settings({"gate_provider": "kimi", "gate_model": "kimi-k3",
                                  "summary_provider": "deepseek", "summary_model": ""})
 
     import os
-    assert os.environ["KNOWME_GATE_PROVIDER"] == "kimi"
-    assert os.environ["KNOWME_GATE_MODEL"] == "kimi-k3"
-    assert os.environ["KNOWME_SUMMARY_PROVIDER"] == "deepseek"
-    assert os.environ["KNOWME_SUMMARY_MODEL"] == ""
+    assert os.environ["ZHIYAN_GATE_PROVIDER"] == "kimi"
+    assert os.environ["ZHIYAN_GATE_MODEL"] == "kimi-k3"
+    assert os.environ["ZHIYAN_SUMMARY_PROVIDER"] == "deepseek"
+    assert os.environ["ZHIYAN_SUMMARY_MODEL"] == ""
     written = (tmp_path / ".env").read_text(encoding="utf-8")
-    assert "KNOWME_GATE_PROVIDER=" in written and "kimi" in written
+    assert "ZHIYAN_GATE_PROVIDER=" in written and "kimi" in written
     # the real repo .env must not have been touched
     assert os.path.abspath(".env") == os.path.abspath(str(tmp_path / ".env"))
 
     # back to 「follow」 — "" is a value, not an absence
     settings_api.apply_settings({"gate_provider": "", "gate_model": ""})
-    assert os.environ["KNOWME_GATE_PROVIDER"] == ""
-    assert os.environ["KNOWME_GATE_MODEL"] == ""
-    assert os.environ["KNOWME_SUMMARY_PROVIDER"] == "deepseek", "untouched fields must stay"
+    assert os.environ["ZHIYAN_GATE_PROVIDER"] == ""
+    assert os.environ["ZHIYAN_GATE_MODEL"] == ""
+    assert os.environ["ZHIYAN_SUMMARY_PROVIDER"] == "deepseek", "untouched fields must stay"
 
 
 def test_a_payload_without_the_roles_leaves_them_alone(tmp_path, monkeypatch):
     """The toggles and the roles share one endpoint; saving one must not clear
     the other."""
-    from knowme.ops import settings_api
+    from zhiyan.ops import settings_api
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("KNOWME_GATE_PROVIDER", "kimi")
-    monkeypatch.setenv("KNOWME_GATE_MODEL", "kimi-k3")
+    monkeypatch.setenv("ZHIYAN_GATE_PROVIDER", "kimi")
+    monkeypatch.setenv("ZHIYAN_GATE_MODEL", "kimi-k3")
 
     settings_api.apply_settings({"graph_workflows": "1"})
 
     import os
-    assert os.environ["KNOWME_GATE_PROVIDER"] == "kimi"
-    assert os.environ["KNOWME_GATE_MODEL"] == "kimi-k3"
+    assert os.environ["ZHIYAN_GATE_PROVIDER"] == "kimi"
+    assert os.environ["ZHIYAN_GATE_MODEL"] == "kimi-k3"
     text = (tmp_path / ".env").read_text(encoding="utf-8") if (tmp_path / ".env").exists() else ""
-    assert "KNOWME_GATE_PROVIDER" not in text
+    assert "ZHIYAN_GATE_PROVIDER" not in text
 
 
 def test_saving_settings_does_not_conjure_an_agent(tmp_path, monkeypatch):
     """rebuild() BUILDS a default agent when none is live (its documented
     historical behaviour). Without the guard, saving a toggle in a CLI process
     would open a database and an MCP bridge as a side effect."""
-    from knowme.ops import browser_agent, settings_api
+    from zhiyan.ops import browser_agent, settings_api
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(browser_agent, "rebuild",
@@ -284,7 +284,7 @@ def test_a_scripted_turn_serves_both_roles_with_the_injected_client(tmp_path):
     one) could break and nothing would notice."""
     gate_answer = response([text_block('{"retrieve": false, "query": "", "reason": "闲聊"}')])
     chat_answer = response([text_block("你好。")])
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([gate_answer, chat_answer]))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([gate_answer, chat_answer]))
 
     result = app.respond("你好")
 

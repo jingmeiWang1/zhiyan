@@ -15,12 +15,12 @@ from pathlib import Path
 
 import pytest
 
-from knowme import integrations
-from knowme.config import load_settings
-from knowme.core import custom_providers
-from knowme.core.models import PROVIDERS
-from knowme.ops import catalog
-from knowme.ops.settings_api import custom_provider_action, settings_info
+from zhiyan import integrations
+from zhiyan.config import load_settings
+from zhiyan.core import custom_providers
+from zhiyan.core.models import PROVIDERS
+from zhiyan.ops import catalog
+from zhiyan.ops.settings_api import custom_provider_action, settings_info
 
 MY_LAB = {"id": "my_lab", "label": "我的实验室", "kind": "openai",
           "base_url": "https://api.mylab.dev/v1", "model": "my-model-large",
@@ -29,18 +29,18 @@ MY_LAB = {"id": "my_lab", "label": "我的实验室", "kind": "openai",
 
 @pytest.fixture
 def home(monkeypatch, tmp_path):
-    """A throwaway .env + .knowme and no network — the isolation the other
-    provider tests use. Returns the .knowme directory the spec file lands in,
+    """A throwaway .env + .zhiyan and no network — the isolation the other
+    provider tests use. Returns the .zhiyan directory the spec file lands in,
     created the same way a real run creates it."""
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("KNOWME_HOME", str(tmp_path / ".knowme"))
-    for name in ("KNOWME_PROVIDER", "KNOWME_MODEL", "KNOWME_SMALL_MODEL", "KNOWME_BASE_URL",
-                 "KNOWME_DISABLED_PROVIDERS", "KNOWME_API_KEY",
+    monkeypatch.setenv("ZHIYAN_HOME", str(tmp_path / ".zhiyan"))
+    for name in ("ZHIYAN_PROVIDER", "ZHIYAN_MODEL", "ZHIYAN_SMALL_MODEL", "ZHIYAN_BASE_URL",
+                 "ZHIYAN_DISABLED_PROVIDERS", "ZHIYAN_API_KEY",
                  custom_providers.key_env("my_lab"), custom_providers.base_url_env("my_lab")):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(integrations, "_provider_probe", lambda values: None)
 
-    from knowme.ops import browser_agent
+    from zhiyan.ops import browser_agent
 
     monkeypatch.setattr(browser_agent, "rebuild", lambda: None)
     monkeypatch.setattr(browser_agent, "current", lambda: None)
@@ -70,8 +70,8 @@ def test_adding_a_provider_table_entry_derives_everything_from_the_spec(home):
 
     provider = PROVIDERS["my_lab"]
     assert provider.kind == "openai"
-    assert provider.key_env == "KNOWME_CUSTOM_MY_LAB_API_KEY"
-    assert provider.base_url_env == "KNOWME_CUSTOM_MY_LAB_BASE_URL"
+    assert provider.key_env == "ZHIYAN_CUSTOM_MY_LAB_API_KEY"
+    assert provider.base_url_env == "ZHIYAN_CUSTOM_MY_LAB_BASE_URL"
     assert provider.configured_base_url() == "https://api.mylab.dev/v1"
     assert (provider.model, provider.small_model) == ("my-model-large", "my-model-small")
     assert custom_providers.is_custom("my_lab")
@@ -94,8 +94,8 @@ def test_the_models_page_shows_it_as_editable_with_a_text_base_url(home):
     view = next(v for v in integrations.list_providers() if v.key == "my_lab")
     assert (view.name, view.custom) == ("我的实验室", True)
     fields = {field.name: field for field in view.fields}
-    assert fields["KNOWME_CUSTOM_MY_LAB_API_KEY"].secret
-    base = fields["KNOWME_CUSTOM_MY_LAB_BASE_URL"]
+    assert fields["ZHIYAN_CUSTOM_MY_LAB_API_KEY"].secret
+    base = fields["ZHIYAN_CUSTOM_MY_LAB_BASE_URL"]
     assert base.kind is integrations.FieldKind.TEXT
     assert base.value == "https://api.mylab.dev/v1"
 
@@ -104,7 +104,7 @@ def test_the_models_page_shows_it_as_editable_with_a_text_base_url(home):
 
 
 def test_adding_persists_the_shape_and_loads_it_back(home):
-    """The file lives beside every other KnowMe runtime file, in the home."""
+    """The file lives beside every other Zhiyan runtime file, in the home."""
     custom_providers.register(home, MY_LAB)
 
     assert json.loads((home / "providers.json").read_text(encoding="utf-8")) == {"custom": [MY_LAB]}
@@ -145,7 +145,7 @@ def test_the_key_goes_to_env_and_never_to_the_spec_file(home):
     result = _add(home)
 
     assert result["ok"] is True
-    assert os.environ["KNOWME_CUSTOM_MY_LAB_API_KEY"] == "sk-mylab"
+    assert os.environ["ZHIYAN_CUSTOM_MY_LAB_API_KEY"] == "sk-mylab"
     assert (home.parent / ".env").read_text(encoding="utf-8").count("sk-mylab") == 1
     assert "sk-mylab" not in (home / "providers.json").read_text(encoding="utf-8")
 
@@ -155,10 +155,10 @@ def test_adding_saves_the_key_endpoint_and_models_and_switches_to_it(home):
 
     assert (result["provider"], result["model"], result["small_model"]) == (
         "my_lab", "my-model-large", "my-model-small")
-    assert os.environ["KNOWME_PROVIDER"] == "my_lab"
-    assert os.environ["KNOWME_MODEL"] == "my-model-large"
-    assert os.environ["KNOWME_CUSTOM_MY_LAB_BASE_URL"] == "https://api.mylab.dev/v1"
-    assert "KNOWME_CUSTOM_MY_LAB_API_KEY='sk-mylab'" in (
+    assert os.environ["ZHIYAN_PROVIDER"] == "my_lab"
+    assert os.environ["ZHIYAN_MODEL"] == "my-model-large"
+    assert os.environ["ZHIYAN_CUSTOM_MY_LAB_BASE_URL"] == "https://api.mylab.dev/v1"
+    assert "ZHIYAN_CUSTOM_MY_LAB_API_KEY='sk-mylab'" in (
         home.parent / ".env").read_text(encoding="utf-8")
 
 
@@ -192,7 +192,7 @@ def test_adding_the_same_provider_twice_does_not_pin_it_twice(home):
 def test_adding_without_switching_leaves_the_current_provider_alone(home):
     _add(home, activate=False)
 
-    assert os.environ.get("KNOWME_PROVIDER", "") == ""
+    assert os.environ.get("ZHIYAN_PROVIDER", "") == ""
     assert settings_info()["provider"] == "anthropic"
 
 
@@ -212,7 +212,7 @@ def test_the_catalog_asks_the_custom_endpoint(home, monkeypatch, kind, expected)
         return Response(json.dumps({"data": [{"id": "my-model-large"}]}).encode())
 
     custom_providers.register(home, {**MY_LAB, "kind": kind, "base_url": "https://api.mylab.dev"})
-    monkeypatch.setenv("KNOWME_PROVIDER", "my_lab")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "my_lab")
     monkeypatch.setenv(custom_providers.key_env("my_lab"), "sk-mylab")
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
     catalog._models_cache.clear()
@@ -304,8 +304,8 @@ def test_removing_hands_the_selection_back_to_a_builtin_before_it_disappears(hom
     assert result["ok"] is True
     assert result["provider"] == "anthropic"
     assert result["model"] == PROVIDERS["anthropic"].model
-    assert os.environ["KNOWME_MODEL"] == ""
-    assert os.environ["KNOWME_SMALL_MODEL"] == ""
+    assert os.environ["ZHIYAN_MODEL"] == ""
+    assert os.environ["ZHIYAN_SMALL_MODEL"] == ""
 
 
 def test_removing_leaves_nothing_behind(home):
@@ -321,11 +321,11 @@ def test_removing_leaves_nothing_behind(home):
     assert "my_lab" not in PROVIDERS
     assert not custom_providers.is_custom("my_lab")
     assert json.loads((home / "providers.json").read_text(encoding="utf-8")) == {"custom": []}
-    assert os.environ.get("KNOWME_CUSTOM_MY_LAB_API_KEY") is None
-    assert os.environ.get("KNOWME_CUSTOM_MY_LAB_BASE_URL") is None
-    assert "KNOWME_CUSTOM_MY_LAB" not in (home.parent / ".env").read_text(encoding="utf-8")
+    assert os.environ.get("ZHIYAN_CUSTOM_MY_LAB_API_KEY") is None
+    assert os.environ.get("ZHIYAN_CUSTOM_MY_LAB_BASE_URL") is None
+    assert "ZHIYAN_CUSTOM_MY_LAB" not in (home.parent / ".env").read_text(encoding="utf-8")
     # A stale id here would make the next provider to take it be born disabled.
-    assert os.environ.get("KNOWME_DISABLED_PROVIDERS", "") == ""
+    assert os.environ.get("ZHIYAN_DISABLED_PROVIDERS", "") == ""
     assert catalog.pinned_specs() == ["anthropic:claude-opus-4-8"]
 
 
@@ -368,13 +368,13 @@ def test_a_failed_probe_offers_the_force_retry_instead_of_a_dead_end(home, monke
     failed = _add(home)
     assert failed["ok"] is False and failed["can_force"] is True
     assert "模型列表不可用" in failed["error"]
-    assert os.environ.get("KNOWME_CUSTOM_MY_LAB_API_KEY") is None
+    assert os.environ.get("ZHIYAN_CUSTOM_MY_LAB_API_KEY") is None
 
     # The retry re-sends the same action: the id is already registered, which
     # must not read as a collision.
     saved = _add(home, force=True)
     assert saved["ok"] is True
-    assert os.environ["KNOWME_CUSTOM_MY_LAB_API_KEY"] == "sk-mylab"
+    assert os.environ["ZHIYAN_CUSTOM_MY_LAB_API_KEY"] == "sk-mylab"
 
 
 def test_a_damaged_spec_file_reads_as_no_providers(home):
@@ -416,7 +416,7 @@ def test_the_add_card_is_wired_to_the_backend():
     """No JS test runner (no build step, on purpose), so the form's contract with
     the route is pinned here: the action names, the field ids submitAddProvider
     reads, and the marker that puts 删除 on custom cards only."""
-    source = (Path(__file__).resolve().parents[2] / "knowme" / "ops" / "static"
+    source = (Path(__file__).resolve().parents[2] / "zhiyan" / "ops" / "static"
               / "js" / "models.js").read_text(encoding="utf-8")
 
     assert 'action: "add_custom"' in source

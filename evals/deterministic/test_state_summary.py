@@ -18,10 +18,11 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from evals.helpers import ScriptedClient, make_knowme, response, text_block
-from knowme.db import connect
-from knowme.runtime import snip_compact
-from knowme.runtime import state_summary as ss
+from zhiyan.runtime import snip_compact
+from zhiyan.runtime import state_summary as ss
+
+from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
+from zhiyan.db import connect
 
 SUMMARY = "Facts: the user wants X. Decided SQLite because single-user local."
 
@@ -250,7 +251,7 @@ def test_a_snipped_summarised_session_comes_back_the_same(tmp_path):
     Asserting the full list, not the length — the earlier bug kept the length
     right and swapped one message for a stale one.
     """
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     session = app.session
     session.start_new("t")
     for i in range(30):

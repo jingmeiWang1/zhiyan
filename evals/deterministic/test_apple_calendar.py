@@ -8,10 +8,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from knowme import integrations
-from knowme.integrations import IntegrationState
-from knowme.tools import calendar
-from knowme.tools.calendar import _applescript_date, sync_to_apple_calendar
+from zhiyan import integrations
+from zhiyan.integrations import IntegrationState
+from zhiyan.tools import calendar
+from zhiyan.tools.calendar import _applescript_date, sync_to_apple_calendar
 
 
 def _completed(stdout: str = "") -> SimpleNamespace:
@@ -70,7 +70,7 @@ def test_probe_apple_calendar_reports_timeout_and_applescript_errors(monkeypatch
 
 
 def test_apple_sync_success_and_failure_update_connection_health(monkeypatch, tmp_path):
-    monkeypatch.setenv("KNOWME_HOME", str(tmp_path))
+    monkeypatch.setenv("ZHIYAN_HOME", str(tmp_path))
     monkeypatch.setattr(calendar.sys, "platform", "darwin")
     monkeypatch.setattr(integrations, "_HEALTH", None)
 
@@ -104,7 +104,7 @@ def test_apple_sync_success_and_failure_update_connection_health(monkeypatch, tm
     [subprocess.TimeoutExpired("osascript", 30), OSError("osascript missing")],
 )
 def test_apple_sync_runtime_exceptions_record_error(monkeypatch, tmp_path, failure):
-    monkeypatch.setenv("KNOWME_HOME", str(tmp_path))
+    monkeypatch.setenv("ZHIYAN_HOME", str(tmp_path))
     monkeypatch.setattr(calendar.sys, "platform", "darwin")
     monkeypatch.setattr(integrations, "_HEALTH", None)
     monkeypatch.setattr(
@@ -143,7 +143,7 @@ def test_create_event_handles_empty_call_gracefully():
     # TypeError. The tool must return a helpful message instead of crashing.
     import sqlite3
 
-    from knowme.tools.calendar import make_tool
+    from zhiyan.tools.calendar import make_tool
 
     conn = sqlite3.connect(":memory:")
     conn.executescript(

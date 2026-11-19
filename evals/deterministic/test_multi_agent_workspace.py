@@ -5,17 +5,17 @@ recalls all of it and any Agent may correct it (the rows keep an agent_id, but
 only as a "who wrote this down" label). They do NOT share CONVERSATIONS: a
 session belongs to the Agent you had it with. Both halves are pinned here."""
 
-from knowme.agents import get_profile, list_profiles
-from knowme.db import connect
-from knowme.memory.semantic.store import SqliteFactStore
-from knowme.ops.browser_agent import resume_or_new_session
-from knowme.ops.web import _thread_history, session_list
+from zhiyan.agents import get_profile, list_profiles
+from zhiyan.db import connect
+from zhiyan.memory.semantic.store import SqliteFactStore
+from zhiyan.ops.browser_agent import resume_or_new_session
+from zhiyan.ops.web import _thread_history, session_list
 
 
 def test_builtin_profiles_are_small_explicit_agent_specs():
     profiles = list_profiles()
     assert [profile.id for profile in profiles] == [
-        "default", "research", "reader", "health"
+        "default", "research", "reader", "exam", "language"
     ]
     assert all(profile.spec.name == profile.id for profile in profiles)
     assert get_profile("default").spec.tools is None
@@ -32,17 +32,18 @@ def test_builtin_profiles_are_small_explicit_agent_specs():
     reader_tools = get_profile("reader").spec.tools
     assert {"open_document", "search_documents", "list_documents"} <= reader_tools
     assert "search_web" not in reader_tools
-    # The health agent reads and writes the six health tables (including the
-    # food library it needs to convert "150g of chicken" into a number), and it
-    # keeps search_web/read_webpage because "give me a plan with evidence" means
-    # looking things up rather than reciting them.
-    health_tools = get_profile("health").spec.tools
-    assert {"health_overview", "query_metrics", "query_workouts", "query_meals",
-            "log_metric", "log_workout", "log_meal", "search_food", "set_target",
-            "save_plan", "list_plans"} <= health_tools
-    assert {"search_web", "read_webpage"} <= health_tools
-    # ...but it does not read documents — that is the reader's and research's job.
-    assert "open_document" not in health_tools
+
+    # The two study agents share the study tables but not their tools: Exam
+    # Coach cannot import a word list or build a dictation card, and Language
+    # Tutor does not get the exam-only vocabulary extractor.
+    exam_tools = get_profile("exam").spec.tools
+    assert {"study_overview", "study_plan", "create_cards", "mark_unit",
+            "replan_study"} <= exam_tools
+    assert "extract_vocab" not in exam_tools
+    assert "create_dictation" not in exam_tools
+    language_tools = get_profile("language").spec.tools
+    assert {"study_overview", "language_progress", "extract_vocab",
+            "import_vocab", "create_dictation", "create_cards"} <= language_tools
 
 
 def test_sessions_and_history_are_isolated_by_agent(tmp_path):

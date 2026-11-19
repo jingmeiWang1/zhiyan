@@ -15,13 +15,13 @@ build/
 .env
 .env.*
 !.env.example
-.knowme/
-.knowme-*/
-.knowme.bak-*/
-.knowme.prerename-bak/
+.zhiyan/
+.zhiyan-*/
+.zhiyan.bak-*/
+.zhiyan.prerename-bak/
 state.db
 traces/
-knowme_workspace/
+zhiyan_workspace/
 *.ics
 
 # Credentials created by optional integrations
@@ -48,7 +48,7 @@ docs/personal_agent_workspace_product_plan.md
 docs/README.md
 docs/kimi-k3-explained.md
 docs/architecture-whiteboard.png
-knowme/ops/README.md
+zhiyan/ops/README.md
 
 # A separate local screenshot set; published screenshots live in docs/images/
 /images/

@@ -15,9 +15,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from knowme.integrations import INTEGRATIONS
+from zhiyan.integrations import INTEGRATIONS
 
-STATIC = Path(__file__).resolve().parents[2] / "knowme" / "ops" / "static"
+STATIC = Path(__file__).resolve().parents[2] / "zhiyan" / "ops" / "static"
 INDEX = (STATIC / "index.html").read_text(encoding="utf-8")
 JS_FILES = sorted((STATIC / "js").glob("*.js"))
 JS_SRC = "\n".join(f.read_text(encoding="utf-8") for f in JS_FILES)
@@ -78,7 +78,7 @@ def test_every_registry_group_has_a_display_name():
     new registry group would not error — it would quietly file itself under the
     wrong heading and nobody would notice. Pin the mapping instead of trusting
     the fallback."""
-    from knowme import integrations
+    from zhiyan import integrations
 
     mapped = set(re.findall(r'^\s*"([^"]+)":\s*"[^"]+",\s*$', JS_SRC, re.MULTILINE))
     # AI Providers has its own page (Models), so it is deliberately not here.
@@ -135,7 +135,7 @@ def test_the_chat_thread_splits_off_every_shape_of_tool_block():
     alarm. Anchoring on the one regex the splitter is built from, and carrying
     its flags across, means a reformat is free while a changed pattern fails.
     """
-    from knowme.runtime import tool_entries as te
+    from zhiyan.runtime import tool_entries as te
 
     source = (STATIC / "js" / "render.js").read_text(encoding="utf-8")
     match = re.search(r'const TOOLS_BLOCK = (/\S.*?/[a-z]*);', source)

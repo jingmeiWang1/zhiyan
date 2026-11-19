@@ -8,7 +8,7 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
-from knowme.tools import calendar, google_calendar
+from zhiyan.tools import calendar, google_calendar
 
 
 def _install_fake_oauth_modules(monkeypatch, *, execute_error: Exception | None = None):
@@ -380,7 +380,7 @@ def test_google_calendar_reports_when_bundled_client_is_not_configured(
     result = google_calendar.connect(tmp_path)
 
     assert "bundled OAuth client is not configured" in result
-    assert ".knowme/credentials.json" in result
+    assert ".zhiyan/credentials.json" in result
     assert "client_config" not in captured
     assert "ran_local_server_port" not in captured
     assert not (tmp_path / "google-token.json").exists()

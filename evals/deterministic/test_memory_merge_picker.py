@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 JS = (Path(__file__).resolve().parents[2]
-      / "knowme" / "ops" / "static" / "js")
+      / "zhiyan" / "ops" / "static" / "js")
 MEMORY_JS = JS / "memory.js"
 VIEWS_JS = JS / "views.js"
 
@@ -68,7 +68,7 @@ const runPicker = (function testPicker() {
   const D = { facts: [
     { id: 3, subject: "奶奶", content: "住在杭州", source: "user" },
     { id: 7, subject: "奶奶的偏好", content: "喜欢桂花糕", source: "user" },
-    { id: 9, subject: "项目", content: "KnowMe", source: "user" },
+    { id: 9, subject: "项目", content: "知研", source: "user" },
   ] };
   eval(memSrc);
   // 弹窗里那个盒子：只关心 innerHTML 被写了什么。
@@ -88,7 +88,7 @@ const runPicker = (function testPicker() {
            "候选里是除自己以外的每一条事实");
     assert(text(rows(html())[0]) === "奶奶的偏好 喜欢桂花糕",
            "每一行写的就是主题和正文，没有一个 ID： " + text(rows(html())[0]));
-    assert(text(rows(html())[1]) === "项目 KnowMe", "…每一条都是这样");
+    assert(text(rows(html())[1]) === "项目 知研", "…每一条都是这样");
     assert(rows(html()).every(r => !/事实 ?ID|#\d/.test(text(r))),
            "候选行上看不到任何 ID 字样");
     assert(!rows(html()).some(r => text(r).includes("住在杭州")),

@@ -25,8 +25,8 @@ import time
 
 import pytest
 
-from knowme.graph import END, run_graph
-from knowme.graph.workflows.gather import (
+from zhiyan.graph import END, run_graph
+from zhiyan.graph.workflows.gather import (
     SCAN_KEYS,
     build_gather_graph,
     gather_topology,
@@ -197,8 +197,8 @@ def test_the_workflow_cannot_act():
     parameter — a model handed no tool schemas cannot call a tool, which is a
     guarantee about capability rather than about instructions.
     """
-    from knowme.graph.workflows import gather as workflow
-    from knowme.ops import gather as binder
+    from zhiyan.graph.workflows import gather as workflow
+    from zhiyan.ops import gather as binder
 
     for module in (workflow, binder):
         code = _code_lines(module)

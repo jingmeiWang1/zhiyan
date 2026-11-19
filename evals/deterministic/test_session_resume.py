@@ -8,8 +8,8 @@ thread if its last message is still within the idle window; else start fresh."""
 
 from __future__ import annotations
 
-from evals.helpers import ScriptedClient, make_knowme
-from knowme.ops.browser_agent import resume_or_new_session
+from evals.helpers import ScriptedClient, make_zhiyan
+from zhiyan.ops.browser_agent import resume_or_new_session
 
 
 def _seed(app, session_id, age_minutes, source="dashboard"):
@@ -22,15 +22,15 @@ def _seed(app, session_id, age_minutes, source="dashboard"):
 
 
 def test_recent_dashboard_thread_is_resumed(tmp_path, monkeypatch):
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     _seed(app, "dashboard-20260101-120000", age_minutes=5)     # fresh
     assert resume_or_new_session(app.conn) == "dashboard-20260101-120000"
 
 
 def test_idle_thread_is_not_resumed(tmp_path, monkeypatch):
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     _seed(app, "dashboard-20260101-120000", age_minutes=120)   # 2h idle > 60m
     got = resume_or_new_session(app.conn)
     assert got != "dashboard-20260101-120000"
@@ -38,8 +38,8 @@ def test_idle_thread_is_not_resumed(tmp_path, monkeypatch):
 
 
 def test_most_recent_of_several_threads_wins(tmp_path, monkeypatch):
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     _seed(app, "dashboard-20260101-090000", age_minutes=40)
     _seed(app, "dashboard-20260101-100000", age_minutes=10)    # newer
     assert resume_or_new_session(app.conn) == "dashboard-20260101-100000"
@@ -48,8 +48,8 @@ def test_most_recent_of_several_threads_wins(tmp_path, monkeypatch):
 def test_only_dashboard_source_threads_are_resumed(tmp_path, monkeypatch):
     """A recent CLI thread must not hijack the dashboard's resume —
     matched by source, not id."""
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     _seed(app, "cli-recent", age_minutes=1, source="cli")
     got = resume_or_new_session(app.conn)
     assert got.startswith("dashboard-") and got != "cli-recent"
@@ -59,8 +59,8 @@ def test_new_chat_s_prefixed_thread_is_resumed(tmp_path, monkeypatch):
     """Regression: '+ New chat' creates 's-...' ids. Resuming by source (not a
     'dashboard-%' id filter) means those threads survive a restart too — the bug
     Sean hit where a new chat 'vanished' when the server bounced."""
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     _seed(app, "s-20260101-120000", age_minutes=3, source="dashboard")
     assert resume_or_new_session(app.conn) == "s-20260101-120000"
 
@@ -75,8 +75,8 @@ def test_a_documents_thread_is_never_resumed_as_the_recent_chat(tmp_path, monkey
     process: History, /api/data and the panel would all report a document's
     conversation as the general agent's current chat.
     """
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     _seed(app, "doc-9ab3", age_minutes=2, source="web")             # the newest…
     _seed(app, "dashboard-20260101-090000", age_minutes=90)         # …but older
     got = resume_or_new_session(app.conn)

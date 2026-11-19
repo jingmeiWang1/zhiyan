@@ -1,7 +1,7 @@
 """DETERMINISTIC EVAL — one sub-agent per sub-question, running in parallel.
 
 The workflow test next door drives `build_deep_research_graph` with SCRIPTED
-callables, so it never touches `knowme/ops/deep_research.py` — the module where
+callables, so it never touches `zhiyan/ops/deep_research.py` — the module where
 the real `research_fn` lives. These tests are the other half: they build the
 REAL bound graph and patch only the seams that would call a model (`run_loop`
 and `_one_shot`), so the fan-out itself is what is under test.
@@ -30,9 +30,9 @@ import json
 import threading
 from types import SimpleNamespace
 
-from knowme.core.loop import LoopResult
-from knowme.graph import run_graph
-from knowme.ops import deep_research as binder
+from zhiyan.core.loop import LoopResult
+from zhiyan.graph import run_graph
+from zhiyan.ops import deep_research as binder
 
 QUESTIONS = ["固态电池的能量密度", "固态电池的量产时间", "固态电池的成本"]
 PLAN_JSON = json.dumps(QUESTIONS, ensure_ascii=False)
@@ -40,7 +40,7 @@ SHARED = "https://shared.example/a"
 
 
 class _FakeTools:
-    """`knowme.tools`, reduced to the one method the binder may call."""
+    """`zhiyan.tools`, reduced to the one method the binder may call."""
 
     def __init__(self):
         self.subset_calls: list[frozenset] = []
@@ -51,7 +51,7 @@ class _FakeTools:
         return self.registry
 
 
-class _FakeKnowme:
+class _FakeZhiyan:
     """Only the attributes build_bound_graph touches. `client` is read but never
     used — `run_loop` is what would call it, and that is patched out; `conn` is
     read by save_fn and handed straight to a patched `create_note`, so its value
@@ -116,7 +116,7 @@ def _run(monkeypatch, tmp_path, answer, plan: str = PLAN_JSON, budget=None,
     monkeypatch.setattr(binder, "run_loop", fake_run_loop)
     # Both one-shot calls go through here; the prompts are distinguishable.
     monkeypatch.setattr(binder, "_one_shot",
-                        lambda knowme, model, prompt, max_tokens:
+                        lambda zhiyan, model, prompt, max_tokens:
                         plan if "research plan" in prompt else "REPORT")
     monkeypatch.setattr(binder, "agent_lock", records["lock"])
     # save_fn's note write needs a live sqlite connection. The report file goes
@@ -125,14 +125,14 @@ def _run(monkeypatch, tmp_path, answer, plan: str = PLAN_JSON, budget=None,
     # is why the id is a parameter.
     monkeypatch.setattr(binder, "create_note", lambda *a, **k: {"id": note_id})
 
-    knowme = _FakeKnowme(tmp_path)
+    zhiyan = _FakeZhiyan(tmp_path)
     if via_page:
-        state = binder.run_deep_research(knowme=knowme, observer=collect,
+        state = binder.run_deep_research(zhiyan=zhiyan, observer=collect,
                                          message="固态电池", budget=budget)
     else:
-        state = run_graph(binder.build_bound_graph(knowme, budget),
+        state = run_graph(binder.build_bound_graph(zhiyan, budget),
                           {"topic": "固态电池", "budget": budget}, observer=collect)
-    return state, records, knowme
+    return state, records, zhiyan
 
 
 def _question_of(kwargs) -> str:
@@ -177,10 +177,10 @@ def test_the_registry_is_built_once_and_shared_by_every_worker(monkeypatch, tmp_
     registry. Building it per worker would be N identical registries — and the
     allowlist test next door pins the module to exactly one call, so this is the
     property that keeps both halves true at once."""
-    _, records, knowme = _run(monkeypatch, tmp_path, _notes)
+    _, records, zhiyan = _run(monkeypatch, tmp_path, _notes)
 
-    assert knowme.tools.subset_calls == [binder.SUBAGENT_TOOLS]
-    assert {id(kwargs["tools"]) for kwargs in records["loops"]} == {id(knowme.tools.registry)}
+    assert zhiyan.tools.subset_calls == [binder.SUBAGENT_TOOLS]
+    assert {id(kwargs["tools"]) for kwargs in records["loops"]} == {id(zhiyan.tools.registry)}
 
 
 # --- 2: a dead sub-agent costs only its own sub-question ----------------------
@@ -388,9 +388,9 @@ def test_the_round_knob_raises_the_guard_that_watches_it(monkeypatch, tmp_path):
     """`max_visits` is built from the same knob, ALWAYS one above it. Equal would
     mean the guard fires on the last legitimate round and that wave comes back
     EMPTY — the run ends with no report and only a line in `errors` (rule 2)."""
-    assert binder.build_bound_graph(_FakeKnowme(tmp_path)) \
+    assert binder.build_bound_graph(_FakeZhiyan(tmp_path)) \
         .nodes["research"].max_visits == binder.MAX_ROUNDS + 1
-    assert binder.build_bound_graph(_FakeKnowme(tmp_path), {"rounds": 2}) \
+    assert binder.build_bound_graph(_FakeZhiyan(tmp_path), {"rounds": 2}) \
         .nodes["research"].max_visits == 3
 
 

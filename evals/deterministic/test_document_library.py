@@ -13,7 +13,7 @@ import io
 
 import pytest
 
-from knowme.applications.library import (
+from zhiyan.applications.library import (
     delete_document,
     file_path,
     get_document,
@@ -24,7 +24,7 @@ from knowme.applications.library import (
     search_documents,
     text_window,
 )
-from knowme.db import connect
+from zhiyan.db import connect
 
 
 def test_both_the_original_and_the_text_are_stored(tmp_path):
@@ -194,7 +194,7 @@ def test_the_bytes_decide_when_the_name_lies(tmp_path):
     and the reader picks its renderer from the kind, so it painted the whole
     extraction as one paragraph. A PDF says what it is in its first four bytes.
     """
-    from knowme.applications.library import kind_and_suffix
+    from zhiyan.applications.library import kind_and_suffix
 
     assert kind_and_suffix("https://arxiv.org/pdf/1706.03762", b"%PDF-1.7\n...") == ("pdf", ".pdf")
     assert kind_and_suffix("paper.pdf", b"%PDF-1.4\n...") == ("pdf", ".pdf")

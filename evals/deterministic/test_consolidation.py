@@ -24,10 +24,10 @@ from types import SimpleNamespace
 import pytest
 
 from evals.helpers import ScriptedClient, response, text_block
-from knowme.db import connect
-from knowme.memory.consolidation import SUMMARIZER_PROMPT, consolidate_if_due
-from knowme.memory.episodic.store import SqliteEpisodeStore
-from knowme.memory.semantic.store import SqliteFactStore
+from zhiyan.db import connect
+from zhiyan.memory.consolidation import SUMMARIZER_PROMPT, consolidate_if_due
+from zhiyan.memory.episodic.store import SqliteEpisodeStore
+from zhiyan.memory.semantic.store import SqliteFactStore
 
 DISTILLED = json.dumps({
     "facts": [{"subject": "Alex", "content": "Alex prefers morning meetings."},

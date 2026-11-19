@@ -2,13 +2,13 @@
 
 Live bug: a tester returned days later and their fresh 'what's up' landed in a
 week-old 32-message thread. New rule: if the current session's newest message
-is older than KNOWME_SESSION_IDLE_MINUTES, the next chat starts a new thread
+is older than ZHIYAN_SESSION_IDLE_MINUTES, the next chat starts a new thread
 (old one stays in History)."""
 
 from __future__ import annotations
 
-from evals.helpers import ScriptedClient, make_knowme, response, text_block
-from knowme.ops.browser_agent import maybe_rotate_session
+from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
+from zhiyan.ops.browser_agent import maybe_rotate_session
 
 
 def _seed(app, session_id, age_minutes):
@@ -21,8 +21,8 @@ def _seed(app, session_id, age_minutes):
 
 
 def test_idle_session_rotates(tmp_path, monkeypatch):
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     before = app.session.session_id
     _seed(app, before, age_minutes=120)          # 2h idle > 60m threshold
     maybe_rotate_session(app)
@@ -32,8 +32,8 @@ def test_idle_session_rotates(tmp_path, monkeypatch):
 
 
 def test_active_session_stays(tmp_path, monkeypatch):
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     before = app.session.session_id
     _seed(app, before, age_minutes=5)            # active conversation
     maybe_rotate_session(app)
@@ -41,16 +41,16 @@ def test_active_session_stays(tmp_path, monkeypatch):
 
 
 def test_empty_session_stays(tmp_path, monkeypatch):
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     before = app.session.session_id
     maybe_rotate_session(app)                   # no messages at all -> no-op
     assert app.session.session_id == before
 
 
 def test_rotation_can_be_disabled(tmp_path, monkeypatch):
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "0")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "0")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     before = app.session.session_id
     _seed(app, before, age_minutes=10000)
     maybe_rotate_session(app)
@@ -67,11 +67,11 @@ def test_a_rotated_thread_keeps_the_document_you_have_open(tmp_path, monkeypatch
     time came off exactly when you asked about it. Same symptom as the wrong-key
     bug, longer fuse.
     """
-    from knowme.ops import web
+    from zhiyan.ops import web
 
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
     gate = response([text_block('{"retrieve": false, "reason": "about the open document"}')])
-    app = make_knowme(tmp_path / "home",
+    app = make_zhiyan(tmp_path / "home",
                       client=ScriptedClient([gate, response([text_block("ok")])]))
     old = app.session.session_id
     _seed(app, old, age_minutes=120)                    # an hour+ since the last word
@@ -96,8 +96,8 @@ def test_a_documents_thread_is_never_rotated(tmp_path, monkeypatch):
     The picked-thread exemption cannot cover this: it is consumed by the next
     turn, and a document is read for an afternoon.
     """
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     app.session.start_new("doc-4d21")            # what the reading pane uses
     _seed(app, "doc-4d21", age_minutes=600)      # 10h of reading
     maybe_rotate_session(app)
@@ -106,15 +106,15 @@ def test_a_documents_thread_is_never_rotated(tmp_path, monkeypatch):
 
 def _pick_from_history(app, session_id):
     """The page's 历史记录 -> 点一条对话 path, without a browser."""
-    from knowme.ops.web import data as web_data
+    from zhiyan.ops.web import data as web_data
 
     return web_data.session_action(
         {"action": "switch", "id": session_id, "agent_id": app.agent_id})
 
 
 def _point_web_at(app, monkeypatch):
-    from knowme.ops import web
-    from knowme.ops.web import data as web_data
+    from zhiyan.ops import web
+    from zhiyan.ops.web import data as web_data
 
     monkeypatch.setattr(web_data, "get_agent", lambda agent_id="default": app)
     monkeypatch.setattr(web, "get_agent", lambda agent_id="default": app)
@@ -128,11 +128,11 @@ def test_a_thread_you_picked_from_history_is_not_rotated_away(tmp_path, monkeypa
     on purpose is the opposite, and the idle gap is exactly what makes an old
     conversation look like a conversation again.
     """
-    from knowme.ops import web
+    from zhiyan.ops import web
 
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
     gate = response([text_block('{"retrieve": false, "reason": "接着上次说"}')])
-    app = make_knowme(tmp_path / "home",
+    app = make_zhiyan(tmp_path / "home",
                       client=ScriptedClient([gate, response([text_block("第二步是先写测试。")])]))
     old = app.session.session_id
     _seed(app, old, age_minutes=180)                # 3h idle: rotation bait
@@ -152,11 +152,11 @@ def test_the_exemption_covers_the_turn_you_sent_not_the_thread_forever(tmp_path,
     """The other half: picking a thread must not switch the idle rule off for it.
     An hour later, saying something new there is the accident rotation exists to
     prevent, and the old thread is a click away in History again."""
-    from knowme.ops import web
+    from zhiyan.ops import web
 
-    monkeypatch.setenv("KNOWME_SESSION_IDLE_MINUTES", "60")
+    monkeypatch.setenv("ZHIYAN_SESSION_IDLE_MINUTES", "60")
     gate = response([text_block('{"retrieve": false, "reason": "接着上次说"}')])
-    app = make_knowme(tmp_path / "home",
+    app = make_zhiyan(tmp_path / "home",
                       client=ScriptedClient([gate, response([text_block("ok")])]))
     old = app.session.session_id
     _seed(app, old, age_minutes=180)
@@ -178,12 +178,12 @@ def test_provider_switch_resets_stale_model_overrides(tmp_path, monkeypatch):
     """Live bug: kimi -> gemini kept gate model kimi-k3; every turn then 404'd
     against Gemini. A provider change must reset any model field the user
     didn't newly type."""
-    from knowme.ops import settings_api
+    from zhiyan.ops import settings_api
 
     captured = {}
-    monkeypatch.setenv("KNOWME_PROVIDER", "kimi")
-    monkeypatch.setenv("KNOWME_MODEL", "kimi-k3")
-    monkeypatch.setenv("KNOWME_SMALL_MODEL", "kimi-k3")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "kimi")
+    monkeypatch.setenv("ZHIYAN_MODEL", "kimi-k3")
+    monkeypatch.setenv("ZHIYAN_SMALL_MODEL", "kimi-k3")
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key-for-tests")
     monkeypatch.setattr(settings_api, "find_dotenv", lambda **k: "", raising=False)
 
@@ -199,8 +199,8 @@ def test_provider_switch_resets_stale_model_overrides(tmp_path, monkeypatch):
                                      "small_model": "kimi-k3", "keys": {}})
     except RuntimeError:
         pass
-    assert captured.get("KNOWME_MODEL", "unset") in ("", "unset") or \
-        captured.get("KNOWME_PROVIDER") == "gemini"
+    assert captured.get("ZHIYAN_MODEL", "unset") in ("", "unset") or \
+        captured.get("ZHIYAN_PROVIDER") == "gemini"
     # the actual contract: stale kimi ids must have been blanked
-    assert captured.get("KNOWME_MODEL") != "kimi-k3"
-    assert captured.get("KNOWME_SMALL_MODEL") != "kimi-k3"
+    assert captured.get("ZHIYAN_MODEL") != "kimi-k3"
+    assert captured.get("ZHIYAN_SMALL_MODEL") != "kimi-k3"

@@ -16,7 +16,7 @@ Three claims, each of which is a different way this could be a lie:
      round that raises still lands somewhere.
 
   3. IT CAN ONLY TOUCH THE WEB. The sub-agent is handed an allowlist of exactly
-     two tools (knowme/ops/deep_research.py). Nothing here may grow a calendar,
+     two tools (zhiyan/ops/deep_research.py). Nothing here may grow a calendar,
      a send, or a filesystem: the whole run's writes are one knowledge note and
      one markdown file in the outbox.
 
@@ -31,8 +31,8 @@ from datetime import date
 
 import pytest
 
-from knowme.graph import run_graph
-from knowme.graph.workflows.deep_research import (
+from zhiyan.graph import run_graph
+from zhiyan.graph.workflows.deep_research import (
     MAX_ROUNDS,
     MAX_VISITS,
     build_deep_research_graph,
@@ -217,7 +217,7 @@ def test_the_topic_survives_a_planner_that_returns_prose():
 def test_the_subagent_is_handed_exactly_two_tools():
     """Read the binder's source, because the capability claim has no runtime
     signal: it is `subset(SUBAGENT_TOOLS)` or it is a lie."""
-    from knowme.ops import deep_research as binder
+    from zhiyan.ops import deep_research as binder
 
     assert binder.SUBAGENT_TOOLS == {"search_web", "read_webpage"}
     subsets = [n for n in ast.walk(ast.parse(inspect.getsource(binder)))
@@ -226,10 +226,10 @@ def test_the_subagent_is_handed_exactly_two_tools():
     assert len(subsets) == 1, "expected exactly one tools.subset call"
     (arg,) = subsets[0].args
     assert isinstance(arg, ast.Name) and arg.id == "SUBAGENT_TOOLS", ast.dump(arg)
-    # And the registry is never used any other way: a bare `knowme.tools.execute`
+    # And the registry is never used any other way: a bare `zhiyan.tools.execute`
     # would run a tool the allowlist never approved.
     code = _code_lines(binder)
-    for banned in ("knowme.tools.execute", "knowme.tools.schemas", "knowme.tools.register"):
+    for banned in ("zhiyan.tools.execute", "zhiyan.tools.schemas", "zhiyan.tools.register"):
         assert not [ln for ln in code if banned in ln], banned
 
 
@@ -237,7 +237,7 @@ def test_the_pure_workflow_cannot_reach_the_model_or_the_disk():
     """The workflow module takes callables and returns dicts. The moment it
     imports a client or opens a file it stops being testable without a network,
     which is the property every test above depends on."""
-    from knowme.graph.workflows import deep_research as workflow
+    from zhiyan.graph.workflows import deep_research as workflow
 
     code = _code_lines(workflow)
     for banned in ("import anthropic", "open(", "sqlite3", "Path(", "requests."):
@@ -251,7 +251,7 @@ def test_the_report_always_lands_inside_the_outbox(tmp_path, topic):
     strips everything a traversal needs, so the guard is belt and braces — the
     property worth asserting is the one a user can see: whatever the topic says,
     the file is in outbox/."""
-    from knowme.ops import deep_research as binder
+    from zhiyan.ops import deep_research as binder
 
     dest = binder._write_report(tmp_path, {"topic": topic}, "body").replace("\\", "/")
     assert dest.startswith(str(tmp_path).replace("\\", "/") + "/outbox/"), dest
@@ -262,7 +262,7 @@ def test_the_outbox_guard_refuses_a_path_that_escapes(tmp_path, monkeypatch):
     """...and the guard is not dead code. The slug has to be forced, because
     _slug cannot produce this: a file NAME of `research-x/../../y-<date>.md`
     resolves out of the outbox, which is exactly what it is there to catch."""
-    from knowme.ops import deep_research as binder
+    from zhiyan.ops import deep_research as binder
 
     monkeypatch.setattr(binder, "_slug", lambda topic, limit=40: "x/../../y")
     out = binder._write_report(tmp_path, {"topic": "t"}, "body")
@@ -273,7 +273,7 @@ def test_the_outbox_guard_refuses_a_path_that_escapes(tmp_path, monkeypatch):
 def test_a_report_that_cites_nothing_still_gets_its_sources(tmp_path):
     """A model that forgets the Sources list should not cost the reader the
     links: the URLs the run actually touched are appended."""
-    from knowme.ops import deep_research as binder
+    from zhiyan.ops import deep_research as binder
 
     dest = binder._write_report(tmp_path, {"topic": "t", "seen": ["https://a.example/x"]},
                                 "the body")
@@ -284,9 +284,9 @@ def test_a_report_that_cites_nothing_still_gets_its_sources(tmp_path):
 
 def test_no_topic_means_no_run():
     """A research run with no topic is a paid round trip to find nothing. The
-    refusal has to happen BEFORE KnowMe() is built — this asserts the shape of
+    refusal has to happen BEFORE Zhiyan() is built — this asserts the shape of
     the answer, which is what the CLI and `/deep_research` both print."""
-    from knowme.ops.deep_research import USAGE, run_deep_research
+    from zhiyan.ops.deep_research import USAGE, run_deep_research
 
     assert run_deep_research(message="   ") == {"digest": USAGE}
 

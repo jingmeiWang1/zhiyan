@@ -4,7 +4,7 @@ The rules, in the order they matter:
 
   1. nothing is due until the conversation is genuinely long — an ordinary turn
      is handed back the same list, untouched
-  2. what it removes is appended to .knowme/archives/ BEFORE the marker points
+  2. what it removes is appended to .zhiyan/archives/ BEFORE the marker points
      at it, so the pointer never names a file that does not exist yet
   3. the opening survives. A conversation that lost its first messages has lost
      its subject, and "what were we doing?" is the question the tail alone
@@ -23,11 +23,11 @@ from __future__ import annotations
 
 import json
 
-from knowme.runtime.session import Session
+from zhiyan.runtime import snip_compact as sc
+from zhiyan.runtime.session import Session
 
-from knowme.config import Settings
-from knowme.db import connect
-from knowme.runtime import snip_compact as sc
+from zhiyan.config import Settings
+from zhiyan.db import connect
 
 HEAD, TAIL = 3, 46
 AT = HEAD + 1 + TAIL          # 50
@@ -214,7 +214,7 @@ def test_history_holds_no_content_blocks(tmp_path):
     If history ever starts carrying real blocks, THIS is where it should be
     discovered, not in a 400 from the provider.
     """
-    from evals.helpers import ScriptedClient, make_knowme, response, text_block, tool_block
+    from evals.helpers import ScriptedClient, make_zhiyan, response, text_block, tool_block
 
     client = ScriptedClient([
         response([text_block('{"retrieve": false}')]),
@@ -222,7 +222,7 @@ def test_history_holds_no_content_blocks(tmp_path):
                              "tu_1")], stop_reason="tool_use"),
         response([text_block("Booked it.")]),
     ])
-    app = make_knowme(tmp_path / "home", client=client)
+    app = make_zhiyan(tmp_path / "home", client=client)
     app.respond("book a swim")
 
     assert app.session.history, "nothing was recorded"

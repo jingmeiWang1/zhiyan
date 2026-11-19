@@ -1,5 +1,5 @@
 """Shared eval plumbing: a scripted fake LLM client for offline tests, and a
-real-KnowMe factory for live ones."""
+real-Zhiyan factory for live ones."""
 
 from __future__ import annotations
 
@@ -10,12 +10,12 @@ from types import SimpleNamespace
 
 
 def _has_key() -> bool:
-    """True when the ACTIVE provider (KNOWME_PROVIDER) has its key set, so live
+    """True when the ACTIVE provider (ZHIYAN_PROVIDER) has its key set, so live
     evals run on whatever the user actually configured (anthropic, openrouter,
     gemini, ...), not only on ANTHROPIC_API_KEY."""
-    from knowme.loop.models import PROVIDERS
+    from zhiyan.loop.models import PROVIDERS
 
-    from knowme.config import load_settings
+    from zhiyan.config import load_settings
 
     settings = load_settings()
     provider = PROVIDERS.get(settings.provider)
@@ -52,17 +52,17 @@ class ScriptedClient:
         return self._script.pop(0)
 
 
-def make_knowme(home: Path, client=None, spec=None, **settings_overrides):
-    """Build a KnowMe with an isolated home dir; optionally swap in a fake client.
+def make_zhiyan(home: Path, client=None, spec=None, **settings_overrides):
+    """Build a Zhiyan with an isolated home dir; optionally swap in a fake client.
 
     `spec` picks WHICH agent (agents/catalog.py) — needed by any eval that
     exercises an agent's own tool allowlist, since the default agent sees every
     tool and would pass a test a narrower agent cannot.
     """
-    from knowme.app import KnowMe
-    from knowme.config import Settings
+    from zhiyan.app import Zhiyan
+    from zhiyan.config import Settings
 
-    # A test must describe its own world. `knowme/config.py` calls load_dotenv()
+    # A test must describe its own world. `zhiyan/config.py` calls load_dotenv()
     # at import, so every Settings() default is quietly seeded from whatever is
     # in the maintainer's .env — and a test that reads the developer's machine
     # is not deterministic. Each entry below is a switch that changes what a
@@ -71,7 +71,7 @@ def make_knowme(home: Path, client=None, spec=None, **settings_overrides):
     #   apple_tools            register four more tools and shell out to macOS
     #   graph_workflows        route every message through the triage graph,
     #                          which spends one extra model call — on 2026-07-31
-    #                          a stale KNOWME_GRAPH_WORKFLOWS=1 ate a scripted
+    #                          a stale ZHIYAN_GRAPH_WORKFLOWS=1 ate a scripted
     #                          response and failed 8 tests that pass in CI
     # NOT pinned here: `experimental`. test_delegate.py drives it with
     # monkeypatch.setenv to prove the env var really gates registration, and a
@@ -91,5 +91,5 @@ def make_knowme(home: Path, client=None, spec=None, **settings_overrides):
     if client is not None and not settings.api_key:
         settings.api_key = "offline"  # never read the real key for scripted runs
     if spec is None:
-        return KnowMe(settings=settings, client=client)
-    return KnowMe(settings=settings, client=client, spec=spec)
+        return Zhiyan(settings=settings, client=client)
+    return Zhiyan(settings=settings, client=client, spec=spec)

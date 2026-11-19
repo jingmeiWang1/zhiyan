@@ -25,9 +25,9 @@ import json
 
 import pytest
 
-from knowme.graph import END, START, Graph, Node
-from knowme.ops import web
-from knowme.ops.web import server
+from zhiyan.graph import END, START, Graph, Node
+from zhiyan.ops import web
+from zhiyan.ops.web import server
 
 
 class _DeadConnection:
@@ -93,11 +93,11 @@ def scripted(monkeypatch):
         g.add_edge(START, "a")
         g.add_edge("a", "b")
         g.add_edge("b", END)
-        from knowme.graph import run_graph
+        from zhiyan.graph import run_graph
 
         return run_graph(g, {}, observer=observer)
 
-    import knowme.ops.gather as gather_mod
+    import zhiyan.ops.gather as gather_mod
 
     monkeypatch.setattr(gather_mod, "run_gather", fake_run)
     return fake_run

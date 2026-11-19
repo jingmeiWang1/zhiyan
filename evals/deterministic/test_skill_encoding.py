@@ -6,10 +6,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from knowme.memory.procedural import installer
-from knowme.memory.procedural.loader import SkillLoader
-from knowme.ops.web import memory_action
-from knowme.tools.memory_admin import make_create_skill_tool
+from zhiyan.memory.procedural import installer
+from zhiyan.memory.procedural.loader import SkillLoader
+from zhiyan.ops.web import memory_action
+from zhiyan.tools.memory_admin import make_create_skill_tool
 
 DESCRIPTION = "\u5904\u7406\u4e2d\u6587\u5468\u62a5"
 BODY = "\u7b2c\u4e00\u6b65\uff1a\u603b\u7ed3\u672c\u5468\u3002 \U0001f680"
@@ -76,7 +76,7 @@ def test_installed_skill_is_written_as_utf8(
     source = (
         f"---\nname: installed-report\ndescription: {DESCRIPTION}\n---\n\n{BODY}\n"
     ).encode()
-    monkeypatch.setenv("KNOWME_HOME", str(home))
+    monkeypatch.setenv("ZHIYAN_HOME", str(home))
     monkeypatch.setattr(installer.urllib.request, "urlopen", lambda *args, **kwargs: BytesIO(source))
 
     installer.install("https://example.com/SKILL.md")
@@ -91,7 +91,7 @@ def test_dashboard_edited_skill_is_written_as_utf8(
     path = home / "skills" / "dashboard-report" / "SKILL.md"
     path.parent.mkdir(parents=True)
     content = f"---\nname: dashboard-report\ndescription: {DESCRIPTION}\n---\n\n{BODY}\n"
-    monkeypatch.setenv("KNOWME_HOME", str(home))
+    monkeypatch.setenv("ZHIYAN_HOME", str(home))
 
     result = memory_action({"action": "save_skill", "path": str(path), "content": content})
 

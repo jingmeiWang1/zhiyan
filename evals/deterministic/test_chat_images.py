@@ -20,8 +20,8 @@ from pathlib import Path
 
 import pytest
 
-from knowme.core.models import OpenAICompatClient
-from knowme.ops.web.uploads import UploadError, image_hint, resolve, save_images
+from zhiyan.core.models import OpenAICompatClient
+from zhiyan.ops.web.uploads import UploadError, image_hint, resolve, save_images
 
 # A real 1x1 PNG — the smallest thing that sniffs as an image. Its bytes are
 # what the magic-number check reads, so a fake header would not test anything.
@@ -149,7 +149,7 @@ def test_a_timeout_is_not_blamed_on_the_model():
 # picture. Same node harness as test_reader_frontend (no build step, no runner).
 
 RENDER_JS = (Path(__file__).resolve().parents[2]
-             / "knowme" / "ops" / "static" / "js" / "render.js")
+             / "zhiyan" / "ops" / "static" / "js" / "render.js")
 
 HARNESS = r"""
 const fs = require("fs");
@@ -224,7 +224,7 @@ def test_the_composer_says_what_a_picture_will_and_will_not_do(tmp_path):
 
 def _gate(retrieve=False):
     """The first model call of a turn is the retrieval gate — see
-    test_knowme_facade, which scripts the same way."""
+    test_zhiyan_facade, which scripts the same way."""
     from evals.helpers import response, text_block
 
     return response([text_block(json.dumps({"retrieve": retrieve, "query": "", "reason": "t"}))])
@@ -250,12 +250,12 @@ class _RecordingClient:
 
 
 def test_the_picture_rides_on_the_user_message_and_never_enters_history(tmp_path):
-    from evals.helpers import make_knowme, response, text_block
+    from evals.helpers import make_zhiyan, response, text_block
 
     client = _RecordingClient([_gate(), response([text_block("红色的")])])
-    knowme = make_knowme(tmp_path, client=client)
+    zhiyan = make_zhiyan(tmp_path, client=client)
     saved = save_images(tmp_path, [{"name": "red.png", "data": PNG_URL}])
-    knowme.respond("这是什么颜色", images=saved)
+    zhiyan.respond("这是什么颜色", images=saved)
 
     # The model got it, on the last user message, in Anthropic's block shape.
     sent = client.calls[-1]["messages"][-1]
@@ -268,12 +268,12 @@ def test_the_picture_rides_on_the_user_message_and_never_enters_history(tmp_path
     assert "这是什么颜色" in sent["content"][0]["text"]
 
     # History is text only — the invariant snip/compaction depend on.
-    assert all(isinstance(m["content"], str) for m in knowme.session.history)
-    assert [m["content"] for m in knowme.session.history if m["role"] == "user"] == [
+    assert all(isinstance(m["content"], str) for m in zhiyan.session.history)
+    assert [m["content"] for m in zhiyan.session.history if m["role"] == "user"] == [
         "这是什么颜色"]
 
     # ...and the chat log keeps where the picture is, not the picture.
-    row = knowme.conn.execute(
+    row = zhiyan.conn.execute(
         "SELECT meta FROM chat_log WHERE role='user' ORDER BY id DESC LIMIT 1").fetchone()
     meta = json.loads(row["meta"])
     assert meta["images"] == [{"name": "red.png", "url": saved[0]["url"],
@@ -284,12 +284,12 @@ def test_the_picture_rides_on_the_user_message_and_never_enters_history(tmp_path
 def test_a_picture_with_no_words_still_records_a_title(tmp_path):
     """Only a screenshot, no text: the session list takes its title from the
     first user message, so it must not end up blank."""
-    from evals.helpers import ScriptedClient, make_knowme, response, text_block
+    from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
 
-    knowme = make_knowme(tmp_path, client=ScriptedClient([_gate(), response([text_block("看到了")])]))
+    zhiyan = make_zhiyan(tmp_path, client=ScriptedClient([_gate(), response([text_block("看到了")])]))
     saved = save_images(tmp_path, [{"name": "red.png", "data": PNG_URL}])
-    knowme.respond("", images=saved)
+    zhiyan.respond("", images=saved)
 
-    contents = [m["content"] for m in knowme.session.history if m["role"] == "user"]
+    contents = [m["content"] for m in zhiyan.session.history if m["role"] == "user"]
     assert contents == ["[图片]"]
-    assert knowme.memory.session_history(knowme.session.session_id)[0][0] == "[图片]"
+    assert zhiyan.memory.session_history(zhiyan.session.session_id)[0][0] == "[图片]"

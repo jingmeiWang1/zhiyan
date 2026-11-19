@@ -18,12 +18,12 @@ The rules, in the order they matter:
 
 from __future__ import annotations
 
-from knowme.runtime.session import Session
+from zhiyan.runtime import tool_budget
+from zhiyan.runtime import tool_entries as te
+from zhiyan.runtime.session import Session
 
-from knowme.config import Settings
-from knowme.runtime import tool_budget
-from knowme.runtime import tool_entries as te
-from knowme.tools.tool_results import make_tool
+from zhiyan.config import Settings
+from zhiyan.tools.tool_results import make_tool
 
 BUDGET = 4000
 CAP = 1200
@@ -45,7 +45,7 @@ def test_the_stored_conversation_keeps_the_full_tool_output(tmp_path):
 
     Tool output used to be compressed inside add_exchange, so chat_log — which is
     what the dashboard renders and what the user reads back — held the excerpt,
-    and the 7,400-character original existed only in .knowme/tool_results/. The
+    and the 7,400-character original existed only in .zhiyan/tool_results/. The
     person reading their own conversation is entitled to the whole thing.
     """
     settings = Settings()

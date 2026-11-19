@@ -8,17 +8,17 @@ from __future__ import annotations
 
 import os
 
-from knowme.config import Settings, load_settings
-from knowme.tools import build_registry
+from zhiyan.config import Settings, load_settings
+from zhiyan.tools import build_registry
 
 
 def test_settings_exposes_the_flag_so_the_ui_can_render_a_toggle(monkeypatch):
-    from knowme.ops import settings_api
+    from zhiyan.ops import settings_api
 
-    monkeypatch.delenv("KNOWME_EXPERIMENTAL", raising=False)
+    monkeypatch.delenv("ZHIYAN_EXPERIMENTAL", raising=False)
     assert settings_api.settings_info()["experimental"] is False
 
-    monkeypatch.setenv("KNOWME_EXPERIMENTAL", "1")
+    monkeypatch.setenv("ZHIYAN_EXPERIMENTAL", "1")
     info = settings_api.settings_info()
     assert info["experimental"] is True
 
@@ -42,13 +42,13 @@ def test_turning_it_off_is_not_swallowed(monkeypatch):
 
 def test_an_explicit_setting_beats_the_global_env_switch(tmp_path, monkeypatch):
     """An explicit Settings value must win over the process environment."""
-    monkeypatch.setenv("KNOWME_EXPERIMENTAL", "1")      # global switch ON
+    monkeypatch.setenv("ZHIYAN_EXPERIMENTAL", "1")      # global switch ON
     off = Settings(home=tmp_path / "off", experimental=False)
     on = Settings(home=tmp_path / "on", experimental=True)
     off.ensure_home()
     on.ensure_home()
 
-    from knowme.db import connect
+    from zhiyan.db import connect
 
     conn = connect(off.home)
     assert "run_command" not in build_registry(conn, off, None)._tools
@@ -57,9 +57,9 @@ def test_an_explicit_setting_beats_the_global_env_switch(tmp_path, monkeypatch):
 
 
 def test_env_var_is_what_load_settings_reads(monkeypatch):
-    """Why the chat was broken: nothing sets KNOWME_EXPERIMENTAL for the server."""
-    monkeypatch.delenv("KNOWME_EXPERIMENTAL", raising=False)
+    """Why the chat was broken: nothing sets ZHIYAN_EXPERIMENTAL for the server."""
+    monkeypatch.delenv("ZHIYAN_EXPERIMENTAL", raising=False)
     assert load_settings().experimental is False
-    monkeypatch.setenv("KNOWME_EXPERIMENTAL", "1")
+    monkeypatch.setenv("ZHIYAN_EXPERIMENTAL", "1")
     assert load_settings().experimental is True
-    assert os.getenv("KNOWME_EXPERIMENTAL") == "1"
+    assert os.getenv("ZHIYAN_EXPERIMENTAL") == "1"

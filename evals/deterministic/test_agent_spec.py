@@ -7,10 +7,10 @@ introducing the spec changed nothing about what the model sees.
 
 from __future__ import annotations
 
-from knowme.config import Settings
-from knowme.core.session import Session, load_soul
-from knowme.core.spec import DEFAULT_SPEC, AgentSpec, resolve
-from knowme.core.tools import Tool, ToolRegistry
+from zhiyan.config import Settings
+from zhiyan.core.session import Session, load_soul
+from zhiyan.core.spec import DEFAULT_SPEC, AgentSpec, resolve
+from zhiyan.core.tools import Tool, ToolRegistry
 
 
 def _settings(tmp_path) -> Settings:
@@ -42,7 +42,7 @@ def test_default_system_prompt_is_byte_identical_to_soul(tmp_path):
         load_soul(settings),
         (
             f"\nYour model: you are running on '{settings.model}' via the "
-            f"'{settings.provider}' provider, inside KnowMe, a local-first "
+            f"'{settings.provider}' provider, inside Zhiyan, a local-first "
             "open-source agent harness."
         ),
     ])
@@ -55,7 +55,7 @@ def test_persona_replaces_soul_but_keeps_model_line(tmp_path):
     out = Session(settings, memory=None).build_system("You are Coder.", "m-x")
     assert out.startswith("You are Coder.\n")
     assert "running on 'm-x'" in out
-    assert "KnowMe, a personal assistant" not in out
+    assert "Zhiyan, a personal assistant" not in out
 
 
 def test_registry_subset_shares_tools_and_ignores_unknown():
@@ -73,7 +73,7 @@ def test_registry_subset_shares_tools_and_ignores_unknown():
 
 def test_runtime_applies_the_agent_tool_allowlist(tmp_path):
     """A spec is a capability boundary, not just documentation for the UI."""
-    from evals.helpers import ScriptedClient, make_knowme, response, text_block
+    from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
 
     seen = []
 
@@ -83,7 +83,7 @@ def test_runtime_applies_the_agent_tool_allowlist(tmp_path):
             return super()._create(**kwargs)
 
     gate = response([text_block('{"retrieve": false, "query": "", "reason": "x"}')])
-    app = make_knowme(
+    app = make_zhiyan(
         tmp_path / "home",
         client=Client([gate, response([text_block("ok")])]),
     )

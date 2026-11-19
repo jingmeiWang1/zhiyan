@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from knowme.db import connect
-from knowme.gateway.cli import _memory_snapshot
+from zhiyan.db import connect
+from zhiyan.gateway.cli import _memory_snapshot
 
 
 def test_memory_snapshot_reads_seeded_home(tmp_path):
     conn = connect(tmp_path)
     conn.execute(
         "INSERT INTO facts (subject, content, source) VALUES (?, ?, ?)",
-        ("project", "KnowMe stays local-first", "user"),
+        ("project", "Zhiyan stays local-first", "user"),
     )
     conn.execute(
         "INSERT INTO facts (subject, content, source) VALUES (?, ?, ?)",
@@ -37,7 +37,7 @@ def test_memory_snapshot_reads_seeded_home(tmp_path):
 
     assert "Semantic facts (2)" in snapshot
     assert "[alex] Alex prefers morning meetings" in snapshot
-    assert "[project] KnowMe stays local-first" in snapshot
+    assert "[project] Zhiyan stays local-first" in snapshot
     assert "Recent episodes (2)" in snapshot
     assert "2026-07-17 - Reviewed the launch checklist" in snapshot
     assert "2026-07-16 - Planned the launch" in snapshot

@@ -34,7 +34,7 @@ from pathlib import Path
 
 import pytest
 
-STATIC = (Path(__file__).resolve().parents[2] / "knowme" / "ops" / "static")
+STATIC = (Path(__file__).resolve().parents[2] / "zhiyan" / "ops" / "static")
 JS = STATIC / "js"
 MAIN_JS = JS / "main.js"
 RENDER_JS = JS / "render.js"
@@ -296,7 +296,7 @@ eval(util + "\n" + block);
 // A row exactly as core/context/tool_entries.py writes it: the reply, the
 // marker on its own line, then one `- tool(args) -> output` per call. The
 // output is the reason this exists: 40 lines of file names.
-const LISTING = "docs/\nevals/\nknowme/\nsql/\n" + "a-very-long-name.py\n".repeat(40);
+const LISTING = "docs/\nevals/\nzhiyan/\nsql/\n" + "a-very-long-name.py\n".repeat(40);
 const record = "我就能直接动手。\n[tools used]\n- list_files({}) -> " + LISTING;
 
 // ---- the split -------------------------------------------------------------

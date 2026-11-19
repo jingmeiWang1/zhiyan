@@ -1,0 +1,1599 @@
+"""Web data collection and mutation handlers."""
+
+# ruff: noqa: F401, I001
+
+
+from __future__ import annotations
+
+import errno
+import json
+import os
+import shutil
+import threading
+import time
+from dataclasses import asdict
+from datetime import UTC, datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+from zhiyan.agents import get_profile, list_profiles
+from zhiyan.applications import ApplicationContextBridge
+from zhiyan.applications.reader import ReaderError, load_upload, load_url
+from zhiyan.config import load_settings
+from zhiyan.db import connect
+from zhiyan.integrations import (
+    apply_integration,
+    apply_provider,
+    apply_provider_disabled,
+    list_connections,
+    list_providers,
+    test_integration,
+)
+from zhiyan.ops import browser_agent, commands
+from zhiyan.ops.browser_agent import (agent_lock, dash_session, get_agent, maybe_rotate_session,
+                                      pick_session)
+from zhiyan.ops.catalog import list_models
+from zhiyan.ops.pricing import price_for, usage_summary
+from zhiyan.ops.settings_api import apply_settings, pin_action, settings_info
+from zhiyan.ops.tracing import TraceEncodingError, iter_trace_lines
+from .runtime import (
+    _NOTION_EPISODES_TTL,
+    _notion_lock,
+    _parse_ts,
+    _tool_status,
+    _tool_summary,
+    application_contexts,
+)
+from zhiyan.core.tools import as_text
+
+
+# The two Notion caches live HERE, in the module whose code reads them. They used
+# to be defined in runtime.py and copied into this module by the package
+# wrapper's _sync_state() — but the HTTP route calls this module directly
+# (server.py: `from .data import *`), so on a real request the names did not
+# exist: with ZHIYAN_EPISODIC_STORE=notion, collect() raised NameError and the
+# dashboard answered with an error payload instead of episodes. A name that only
+# exists after someone else's wrapper ran is a name that isn't really there.
+_notion_store = None                       # built once (its constructor calls Notion)
+_notion_episodes: tuple[float, list] | None = None   # (fetched_at, items)
+
+# The ONE table that is still per-Agent. Memory (facts / episodes / notes) is one
+# shared pool — every Agent recalls all of it and any Agent may correct it — but
+# a conversation belongs to the Agent you had it with. The database tab has to
+# agree with the memory tab, or the same rows show up under one Agent here and
+# under another there. Change this tuple, not the queries.
+PER_AGENT_TABLES = ("chat_log",)
+
+
+def invalidate_notion_cache() -> None:
+    """Forget cached Notion clients/results after connection settings change."""
+    global _notion_store, _notion_episodes
+    with _notion_lock:
+        _notion_store = None
+        _notion_episodes = None
+
+
+def _get_notion_store():
+    """The ONE NotionEpisodeStore for the whole web process. Its
+    constructor round-trips to Notion (data-source resolution), so it's built
+    lazily and cached. Callers must hold _notion_lock."""
+    global _notion_store
+    if _notion_store is None:
+        from zhiyan.memory.episodic.notion_store import NotionEpisodeStore
+
+        _notion_store = NotionEpisodeStore()
+    return _notion_store
+
+
+def collect(agent_id: str = "default") -> dict:
+    """Everything the page shows for one Agent, in one JSON blob."""
+    get_profile(agent_id)
+    settings = load_settings()
+    info = settings_info()
+    settings.ensure_home()
+    home = settings.home
+    conn = connect(home)
+
+    def rows(sql: str, args: tuple = ()) -> list[dict]:
+        return [dict(r) for r in conn.execute(sql, args).fetchall()]
+
+    def episodes_payload() -> dict:
+        """Episodes from the active backend: sqlite (default) or notion.
+        A Notion outage must not take down the whole web payload.
+
+        The sqlite branch is the SHARED pool (no agent filter — memory is one
+        pool; see SqliteFactStore). The notion branch below stays per-agent on
+        purpose: that backend partitions by agent_id on Notion's side, and we
+        cannot change how an external service scopes its own data."""
+        if settings.episodic_store != "notion":
+            return {
+                "source": "sqlite",
+                "error": "",
+                "items": rows(
+                    "SELECT id, happened_at, summary, agent_id "
+                    "FROM episodes ORDER BY happened_at DESC",
+                ),
+            }
+        try:
+            global _notion_episodes
+            with _notion_lock:
+                store = _get_notion_store()
+                if _notion_episodes and time.time() - _notion_episodes[0] < _NOTION_EPISODES_TTL:
+                    items = _notion_episodes[1]
+                    return {"source": "notion", "error": "", "items": [
+                        item for item in items
+                        if item.get("agent_id", "default") == agent_id
+                    ]}
+                items = store.list()
+                _notion_episodes = (time.time(), items)
+                return {"source": "notion", "error": "", "items": [
+                    item for item in items
+                    if item.get("agent_id", "default") == agent_id
+                ]}
+        except Exception as exc:
+            # Degrade gracefully: never take the payload down, and serve the
+            # last good fetch if we have one (an outage shouldn't blank the tab).
+            stale = [item for item in (_notion_episodes[1] if _notion_episodes else [])
+                     if item.get("agent_id", "default") == agent_id]
+            return {"source": "notion", "error": str(exc), "items": stale}
+
+    episodes_data = episodes_payload()
+
+    # --- traces → turns (group events between turn_start and turn_end)
+    events = []
+    trace_errors = []
+    trace_files = sorted((home / "traces").glob("*.jsonl"))
+    for path in trace_files:
+        try:
+            lines = list(iter_trace_lines(path))
+        except TraceEncodingError as exc:
+            trace_errors.append({"file": path.name, "error": str(exc)})
+            continue
+        for line in lines:
+            try:
+                events.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    events = [event for event in events if event.get("agent_id", agent_id) == agent_id]
+    turns, current, wake_scans = [], None, []
+    for ev in events:
+        kind = ev.get("type")
+        if kind == "turn_start":
+            current = {"user_message": ev.get("user_message"), "ts": ev.get("ts"),
+                       "agent_id": ev.get("agent_id", "default"),
+                       "session_id": ev.get("session_id"),
+                       "gate": None, "llm_calls": [], "tools": [], "reply": None}
+        elif kind == "wake_scan":
+            wake_scans.append(ev)
+        elif current is not None:
+            if kind == "gate":
+                current["gate"] = ev
+            elif kind == "context":
+                current["context"] = ev
+            elif kind == "route":
+                # Only TRIAGE's route describes this message's door. Every
+                # workflow with a router emits route events, and this branch
+                # folds anything that arrives while a turn is open into that
+                # turn — so a `gather` or a `deep_research` branching in the
+                # background relabelled the user's chat message (its targets are
+                # never "quick_reply", so the turn was recorded as the full
+                # door). The turn card's job is to say which door ONE message
+                # took; a graph running alongside is not that.
+                if ev.get("workflow") == "triage":
+                    current["graph"] = {"workflow": ev.get("workflow"),
+                                        "route": "quick" if ev.get("target") == "quick_reply" else "full",
+                                        "reason": (current.get("graph") or {}).get("reason", "")}
+            elif kind == "triage":
+                current.setdefault("graph", {})["reason"] = ev.get("reason", "")
+            elif kind == "llm":
+                current["llm_calls"].append(ev)
+            elif kind == "tool":
+                current["tools"].append(ev)
+            elif kind == "consolidation":
+                current["consolidation"] = ev
+            elif kind == "turn_end":
+                current["reply"] = ev.get("reply")
+                current["iterations"] = ev.get("iterations")
+                turns.append(current)
+                current = None
+    if current is not None:  # a turn that never ended = the smoking gun for hangs
+        current["reply"] = "TURN NEVER FINISHED — check for a hang after this point"
+        current["unfinished"] = True
+        turns.append(current)
+
+    # --- derive per-turn latency + dollar cost (the ops numbers humans feel)
+    if settings.base_url or settings.provider == "openrouter":
+        list_models()  # warm the per-model price cache (5-min cached fetch)
+    price_in, price_out = price_for(settings.provider, settings.model or "")
+    for t in turns:
+        start, end = _parse_ts(t["ts"]), None
+        last = t["llm_calls"][-1]["ts"] if t["llm_calls"] else None
+        end = _parse_ts(last)
+        t["latency_ms"] = int((end - start).total_seconds() * 1000) if start and end else None
+        tin = sum(c.get("usage", {}).get("in", 0) for c in t["llm_calls"])
+        tout = sum(c.get("usage", {}).get("out", 0) for c in t["llm_calls"])
+        t["cost"] = tin / 1e6 * price_in + tout / 1e6 * price_out
+        for x in t["tools"]:
+            # Older trace files stored a list-returning tool's result as a list
+            # (see tools.as_text) — a truthy list used to raise right here and
+            # take all of /api/data with it.
+            x["output"] = as_text(x.get("output"))
+            x["status"] = _tool_status(x["output"])
+            x["summary"] = _tool_summary(x["output"])
+
+    latencies = sorted(t["latency_ms"] for t in turns if t["latency_ms"] is not None)
+    total_cost = sum(t["cost"] for t in turns)
+
+    def pct(p: float) -> int:
+        return latencies[min(len(latencies) - 1, int(len(latencies) * p))] if latencies else 0
+
+    from zhiyan.memory import bundled_skill_dirs
+    from zhiyan.memory.procedural.loader import SkillLoader
+
+    skills = [{"name": s.name, "description": s.description, "body": s.body,
+               "path": str(s.path),
+               # relative path (for reveal) + whether it lives in the editable home dir
+               "rel": _rel_to_home(s.path, home),
+               "editable": str((home / "skills").resolve()) in str(s.path.resolve())}
+              for s in SkillLoader([*bundled_skill_dirs(), home / "skills"]).skills]
+
+    eval_report = None
+    report_path = home / "eval_report.json"
+    if report_path.exists():
+        eval_report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    eval_history = []
+    hist_path = home / "eval_runs.jsonl"
+    if hist_path.exists():
+        for line in hist_path.read_text(encoding="utf-8").splitlines()[-20:]:
+            try:
+                eval_history.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
+    eval_history.reverse()
+
+    outbox = [{"name": p.name, "text": p.read_text(encoding="utf-8")[:400]}
+              for p in sorted((home / "outbox").glob("*.txt"), reverse=True)[:20]]
+
+    # --- state.db introspection: the actual SQLite tables, so the persistence
+    # layer is visible (not just its contents). Table names are hard-coded, so
+    # the f-string SQL is safe.
+    def table_info(name):
+        info = conn.execute(f"PRAGMA table_info({name})").fetchall()
+        cols = [r["name"] for r in info]
+        types = {r["name"]: r["type"] for r in info}
+        scoped = name in PER_AGENT_TABLES
+        where = " WHERE agent_id=?" if scoped else ""
+        args = (agent_id,) if scoped else ()
+        count = conn.execute(f"SELECT COUNT(*) FROM {name}{where}", args).fetchone()[0]
+        # up to 200 newest rows so each table has its own scrollable tab
+        sample = [dict(r) for r in conn.execute(
+            f"SELECT * FROM {name}{where} ORDER BY rowid DESC LIMIT 200", args
+        ).fetchall()]
+        return {"name": name, "columns": cols, "types": types, "count": count, "sample": sample}
+
+    db_path = home / "state.db"
+    all_tables = [r["name"] for r in
+                  conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()]
+    db_info = {
+        "path": str(db_path.resolve()),
+        "size": db_path.stat().st_size if db_path.exists() else 0,
+        "tables": [table_info(n) for n in ("calendar_events", "facts", "episodes", "chat_log")],
+        "fts": [t for t in all_tables if t.endswith("_fts")],
+        "all_tables": all_tables,
+    }
+
+    # Report every profile without eagerly building an LLM client.  A page load
+    # should stay cheap; selecting/chatting with an agent creates it lazily.
+    profiles = list_profiles()
+    live_agents = browser_agent.current_agents()
+    current_sessions = {
+        profile.id: (
+            live_agents[profile.id].session.session_id
+            if profile.id in live_agents else dash_session(profile.id)
+        )
+        for profile in profiles
+    }
+    sessions_by_agent = {
+        profile.id: session_list(conn, profile.id) if profile.id == agent_id else []
+        for profile in profiles
+    }
+    consolidation_history = [
+        {
+            "session_id": e.get("session_id", "default"),
+            "agent_id": e.get("agent_id", agent_id),
+            "ts": e.get("ts"),
+            "messages": e.get("messages", 0),
+            "exchanges": e.get("exchanges", 0),
+            "new_facts": e.get("new_facts", 0),
+            "new_episodes": e.get("new_episodes", 0),
+        }
+        for e in events if e.get("type") == "consolidation"
+    ][-20:][::-1]
+    pending_sessions = [s for s in sessions_by_agent.get(agent_id, [])
+                        if s.get("pending_messages", 0)]
+
+    # --- graph workflows: topology straight from the engine (never hand-drawn,
+    # so the picture can't drift) + quick/full split from the trace events
+    from zhiyan.graph.workflows.deep_research import deep_research_topology
+    from zhiyan.graph.workflows.gather import gather_topology
+    from zhiyan.graph.workflows.triage import triage_topology
+    graph_routes = [e.get("target") for e in events if e.get("type") == "route"]
+    # The last few completed runs, newest first. Overview needs this because the
+    # two workflows are two different JOBS with different triggers — triage runs
+    # itself on every message, gather runs when you ask — so "which chart is
+    # relevant right now" is a question only the trace can answer. Rendering a
+    # fixed workflow there showed triage forever, seconds after a gather ran.
+    graph_runs = [{"workflow": e.get("workflow"), "ms": e.get("ms"),
+                   "at": e.get("ts"), "steps": e.get("steps"),
+                   "path": e.get("path") or [], "error": e.get("error")}
+                  for e in events if e.get("type") == "graph_end"][-8:][::-1]
+
+    return {
+        # WHOSE data this is. Part of the payload is agent-scoped (chat_log,
+        # skills, traces, and sessions_by_agent — filled for the requested agent
+        # only), so the page has to be able to tell that an answer arriving late
+        # belongs to the agent you just left. Memory is no longer in that set:
+        # facts/episodes/notes are the same for every Agent. See the matching
+        # check in static/js/main.js refresh().
+        "agent_id": agent_id,
+        "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "home": str(home.resolve()),
+        "provider": settings.provider,
+        "model": info["model"],
+        "stats": {
+            "turns": len(turns),
+            "tool_calls": sum(len(t["tools"]) for t in turns),
+            "tool_errors": sum(1 for t in turns for x in t["tools"] if x["status"] == "error"),
+            "gate_skips": sum(1 for t in turns if t["gate"] and t["gate"].get("decision") == "skip"),
+            "gate_retrieves": sum(1 for t in turns if t["gate"] and t["gate"].get("decision") == "retrieve"),
+            "tokens_in": sum(c.get("usage", {}).get("in", 0) for t in turns for c in t["llm_calls"]),
+            "tokens_out": sum(c.get("usage", {}).get("out", 0) for t in turns for c in t["llm_calls"]),
+            "cost": round(total_cost, 4),
+            "latency_avg": int(sum(latencies) / len(latencies)) if latencies else 0,
+            "latency_p95": pct(0.95),
+            "trace_files": len(trace_files),
+        },
+        "turns": turns[::-1][:50],
+        "wake_scans": wake_scans[::-1][:25],
+        # last raw trace lines, so Ops shows traces inline (no folder needed)
+        "trace_tail": [{"type": e.get("type"), "ts": e.get("ts"),
+                        "detail": (e.get("user_message") or e.get("decision") or e.get("tool")
+                                   or e.get("reply") or "")}
+                       for e in events[-18:]][::-1],
+        "trace_file": (trace_files[-1].name if trace_files else None),
+        "trace_errors": trace_errors,
+        "agents": [
+            {**profile.to_public(),
+             "status": "ready" if profile.id in live_agents else "idle",
+             "session_id": current_sessions[profile.id]}
+            for profile in profiles
+        ],
+        # The shared pool — agent_id rides along so the row can say who recorded
+        # it, but nothing is filtered by it. chat_log below is still scoped.
+        "facts": rows(
+            "SELECT id, subject, content, source, agent_id, created_at "
+            "FROM facts ORDER BY id DESC"
+        ),
+        "episodes": episodes_data["items"],
+        "episodes_source": episodes_data["source"],
+        "episodes_error": episodes_data["error"],
+        "soul": (home / "SOUL.md").read_text(encoding="utf-8") if (home / "SOUL.md").exists() else "",
+        "chat_pending": conn.execute(
+            "SELECT COUNT(*) FROM chat_log WHERE agent_id=? AND consolidated=0",
+            (agent_id,),
+        ).fetchone()[0],
+        "pending_sessions": pending_sessions,
+        "consolidation_history": consolidation_history,
+        "chat_log": rows(
+            "SELECT role, content, consolidated, source, session_id, agent_id, created_at "
+            "FROM chat_log WHERE agent_id=? ORDER BY id DESC LIMIT 80", (agent_id,)
+        )[::-1],
+        # Keep the two legacy fields for old open tabs.  New clients use the
+        # per-agent maps and never mix one agent's history into another's dock.
+        "sessions": sessions_by_agent["default"],
+        "current_session": current_sessions["default"],
+        "sessions_by_agent": sessions_by_agent,
+        "current_sessions": current_sessions,
+        "consolidate_every": settings.consolidate_every,
+        "calendar": rows('SELECT title, start, "end", attendees, created_at FROM calendar_events ORDER BY start'),
+        "outbox": outbox,
+        "skills": skills,
+        "eval_report": eval_report,
+        "eval_history": eval_history,
+        "graph": {
+            # NOTE: `enabled` gates TRIAGE ONLY — the per-message front door.
+            # `zhiyan gather` is a routine you run yourself and ignores this flag
+            # entirely, so the UI must not say "off = no graphs run".
+            "enabled": settings.graph_workflows,
+            "workflows": [triage_topology(), gather_topology(), deep_research_topology()],
+            "runs": graph_runs,
+            "stats": {"quick": sum(1 for t in graph_routes if t == "quick_reply"),
+                      "full": sum(1 for t in graph_routes if t == "full_agent")},
+        },
+        "db": db_info,
+        "settings": info,
+        "providers": [asdict(view) for view in list_providers()],
+        "knowledge_info": knowledge_info(),
+        "study_info": study_info(conn),
+        "connections": [asdict(view) for view in list_connections()],
+        "tools": tools_info(),
+        "usage": usage_summary(home),
+    }
+
+
+def _rel_to_home(path, home) -> str:
+    """Path relative to ZHIYAN_HOME if it lives there, else the repo-relative
+    'skills/...' path — either way something reveal_path can open."""
+    try:
+        return str(path.resolve().relative_to(home.resolve()))
+    except ValueError:
+        return str(path)
+
+
+def session_list(conn, agent_id: str = "default") -> list[dict]:
+    """One row per conversation for the chat-history picker: id, its first user
+    message (the title), message count, newest first. Sessions are just a
+    session_id label on chat_log rows — the same table, no new storage."""
+    groups = conn.execute(
+        """SELECT session_id, COUNT(*) AS messages, MAX(created_at) AS last_at,
+                  SUM(CASE WHEN consolidated = 0 THEN 1 ELSE 0 END) AS pending_messages
+           FROM chat_log WHERE agent_id=?
+           GROUP BY session_id ORDER BY last_at DESC""",
+        (agent_id,),
+    ).fetchall()
+    out = []
+    for g in groups:
+        sid = g["session_id"]
+        first = conn.execute(
+            "SELECT content FROM chat_log WHERE session_id=? AND agent_id=? "
+            "AND role='user' ORDER BY id LIMIT 1",
+            (sid, agent_id),
+        ).fetchone()
+        last = conn.execute(
+            "SELECT role, content FROM chat_log WHERE session_id=? AND agent_id=? "
+            "ORDER BY id DESC LIMIT 1", (sid, agent_id)
+        ).fetchone()
+        sources = [r["source"] for r in conn.execute(
+            "SELECT DISTINCT source FROM chat_log WHERE session_id=? AND agent_id=?",
+            (sid, agent_id),
+        ).fetchall()]
+        preview = ""
+        if last:
+            preview = ("you: " if last["role"] == "user" else "zhiyan: ") + last["content"][:80]
+        out.append({"id": sid,
+                    "title": (first["content"][:60] if first else "(empty)"),
+                    "last": preview,
+                    "sources": sources,
+                    "messages": g["messages"],
+                    "pending_messages": g["pending_messages"] or 0,
+                    "pending_exchanges": (g["pending_messages"] or 0) // 2,
+                    "last_at": g["last_at"]})
+    return out
+
+
+# A tool's origin, for grouping in the Tools tab (name → category).
+_FLAGSHIP = {"create_event", "list_events", "save_note", "send_message"}
+_SELFMGMT = {"search_memory", "manage_memory", "update_soul", "create_skill"}
+_APPLE = {"read_apple_calendar", "read_apple_mail", "create_reminder", "create_note"}
+_WEB = {"search_web", "read_webpage"}
+
+
+def _tool_source(name: str, mcp_servers: list[str]) -> str:
+    if name in _FLAGSHIP:
+        return "flagship"
+    if name in _WEB:
+        return "web"
+    if name in _SELFMGMT:
+        return "self-management"
+    if name in _APPLE:
+        return "apple"
+    if any(name.startswith(f"{s}_") for s in mcp_servers):
+        return "mcp"
+    return "other"
+
+
+def knowledge_info() -> dict:
+    """Every one of the user's knowledge notes, for the web.
+
+    Not filtered by Agent: this is the human's own knowledge base and they own
+    every note in it, whatever Agent wrote it. Each row still carries its
+    agent_id so the view can label where the note came from. The Agents' own
+    tools now pass agent_id=None too — notes are shared, like facts and
+    episodes (see zhiyan/tools/knowledge.py:_agent_conds).
+    """
+    from zhiyan.tools.knowledge import list_folders, list_notes
+    settings = load_settings()
+    conn = connect(settings.home)
+    notes = list_notes(conn, agent_id=None)
+    folders = list_folders(conn, agent_id=None)
+    return {
+        "notes_count": len(notes),
+        "folders": folders,
+        "notes": notes,
+        "all_folders": folders,
+    }
+
+
+def study_info(conn) -> dict:
+    """学习页的摘要：项目、今日议程、到期数、进度、资料、音频元信息。
+
+    **不下发卡片正文。** 卡片可能有几千张，而 /api/data 每 5 秒轮询一次；
+    页面进入词汇/卡片页时再用 /api/study 的 list_cards 按需取。音频也只给
+    id/标题/时长/是否有 transcript，正文（transcript）按需取。
+    """
+    from zhiyan.applications import study as st
+
+    info = st.overview(conn, limit=20)
+    for item in info["projects"]:
+        project_id = item["project"]["id"]
+        item["plan_versions"] = st.list_plans(conn, project_id)[:10]
+        if item["project"]["kind"] != "language":
+            continue
+        item["audio"] = [
+            {"id": audio["id"], "title": audio["title"],
+             "duration_sec": audio["duration_sec"],
+             "has_transcript": bool(audio["transcript"]),
+             "created_at": audio["created_at"]}
+            for audio in st.list_audio(conn, project_id)
+        ]
+    return info
+
+
+def research_info(note_id: str) -> dict:
+    """One research run's process, as the page saw it happen.
+
+    Fetched per record rather than carried in /api/data: these are the run's
+    event frames, and /api/data is polled every 5 seconds by every open tab —
+    shipping every past run's process in every poll would pay for the whole
+    history on every tick to show, at most, the one record someone clicked.
+
+    The reader (and the id guard, and the directory) lives in
+    ops/deep_research.py, next to the writer: one module owns this format.
+    """
+    from zhiyan.ops.deep_research import read_frames
+
+    settings = load_settings()
+    return {"note_id": note_id, "frames": read_frames(settings.home, note_id)}
+
+
+def tools_info() -> dict:
+    """The agent's available tools + any configured MCP servers — so the Tools
+    tab shows CAPABILITIES, not just the artifacts tool calls produced. Reflects
+    the live agent's registry when one exists (exact), else builds a display-only
+    catalog (no MCP subprocess is spawned just to render the page)."""
+    settings = load_settings()
+    settings.ensure_home()
+    mcp = {"configured": False, "servers": [], "live": False}
+    mcp_path = settings.home / "mcp.json"
+    if mcp_path.exists():
+        mcp["configured"] = True
+        try:
+            mcp["servers"] = [s.get("name", "?") for s in json.loads(mcp_path.read_text(encoding="utf-8")).get("servers", [])]
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    catalog = []
+    live = browser_agent.current()
+    if live is not None:
+        mcp["live"] = getattr(live, "mcp_bridge", None) is not None
+        tools = list(live.tools._tools.values())
+    else:
+        # Display-only: same tools minus MCP (building the real registry would
+        # start MCP servers, which we don't want on a 5-second poll).
+        from zhiyan.memory import Memory
+        from zhiyan.tools import calendar, knowledge, memory_admin, messages, notes, search
+
+        conn = connect(settings.home)
+        try:
+            # Notion mode: reuse the web's one cached client instead of
+            # letting Memory() build a fresh one per poll (issue #20).
+            episode_store = None
+            if settings.episodic_store == "notion":
+                with _notion_lock:
+                    episode_store = _get_notion_store()
+            mem = Memory(conn, settings, None, episode_store=episode_store)
+        except Exception:
+            # A misconfigured optional backend (notion/supabase) must not take
+            # the web down — drop the memory-admin tools from the
+            # display-only catalog instead.
+            mem = None
+        tools = [calendar.make_tool(
+                     conn,
+                     settings.home,
+                     apple_calendar=settings.apple_calendar,
+                     google_calendar=settings.google_calendar,
+                     google_calendar_id=settings.google_calendar_id,
+                 ),
+                 calendar.make_list_tool(conn),
+                 notes.make_tool(conn), messages.make_tool(settings.home),
+                 search.make_tool(),
+                 memory_admin.make_update_soul_tool(settings)]
+        if mem is not None:
+            tools += [memory_admin.make_manage_memory_tool(mem),
+                      memory_admin.make_create_skill_tool(settings, mem)]
+        tools += list(knowledge.make_knowledge_tools(
+            conn, agent_id=getattr(mem, "agent_id", "default")
+        ).values())
+        if settings.apple_tools:
+            from zhiyan.tools import apple
+
+            tools += apple.make_tools()
+        if settings.experimental:
+            # Mirror build_registry: without this the catalog LIES after you
+            # flip the experimental toggle — the roadmap boxes are missing until
+            # the first chat turn builds the real agent, so it looks like the
+            # switch did nothing.
+            from zhiyan.tools import experimental as experimental_tools
+
+            tools += experimental_tools.make_tools(settings)
+    for t in tools:
+        catalog.append({"name": t.name, "description": t.description,
+                        "source": _tool_source(t.name, mcp["servers"])})
+    catalog.sort(key=lambda c: (c["source"], c["name"]))
+    from zhiyan.tools.experimental import PLANNED
+
+    return {"catalog": catalog, "mcp": mcp, "apple_on": settings.apple_tools,
+            "planned": PLANNED}   # whiteboard boxes not wired in yet (coming soon)
+
+
+def run_query(payload: dict) -> dict:
+    sql = (payload.get("sql") or "").strip().rstrip(";").strip()
+    if not sql:
+        return {"error": "Type a SELECT query."}
+    low = sql.lower()
+    if not (low.startswith(("select", "with"))):
+        return {"error": "Only SELECT (or WITH … SELECT) queries are allowed."}
+    if ";" in sql:
+        return {"error": "One statement at a time (no semicolons)."}
+    import sqlite3
+
+    settings = load_settings()
+    settings.ensure_home()
+    db = (settings.home / "state.db").resolve()
+    try:
+        c = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        c.row_factory = sqlite3.Row
+        cur = c.execute(sql)
+        cols = [d[0] for d in cur.description] if cur.description else []
+        data = [[str(r[i]) if r[i] is not None else "" for i in range(len(cols))]
+                for r in cur.fetchmany(200)]
+        c.close()
+        return {"columns": cols, "rows": data}
+    except sqlite3.Error as exc:
+        return {"error": str(exc)}
+
+
+def _thread_history(conn, sid: str, agent_id: str = "default") -> list[dict]:
+    """The ONE way to load a thread for the chat dock: role + content + the
+    per-turn meta (gate/stats/tools/model) so every card renders in full.
+    Every history-loading path goes through here so they can't drift apart
+    (they used to: 'switch' dropped meta and showed only text)."""
+    rows = conn.execute(
+        "SELECT role, content, meta FROM chat_log "
+        "WHERE session_id=? AND agent_id=? ORDER BY id",
+        (sid, agent_id),
+    ).fetchall()
+    return [{"role": r["role"], "content": r["content"],
+             "meta": json.loads(r["meta"]) if r["meta"] else None} for r in rows]
+
+
+# The agent behind the reading pane's ask panel (reader.js's ASK_AGENT). A
+# document's own thread lives under this id, named doc-<document id> — see
+# browser_agent.DOC_PREFIX for the two places that name has to be honoured.
+READER_AGENT = "reader"
+
+
+def _purge_session(conn, home: Path, agent_id: str, sid: str) -> None:
+    """Erase one conversation from every store it lives in.
+
+    A "thread" is not one table: its messages are chat_log rows, its archived
+    tail is two more tables (history_snips / history_summaries) plus the .jsonl
+    files they point at, and the document it was reading is a Context Bridge
+    entry. Miss one and the delete is a lie — the messages go, but the agent
+    stays parked on a thread id nothing owns any more, or an archive is left on
+    disk for a conversation you asked to be rid of.
+
+    NOT touched, deliberately: traces/<date>.jsonl (one file per DAY, and only
+    its turn_start/turn_end lines even name a session — rewriting a file the
+    tracer appends to per event can drop a line from a turn running right now)
+    and tool_results/*.txt (keyed by content hash; no session link exists).
+    """
+    from zhiyan.core.context import snip_compact
+
+    archives = [r["archive_path"] for r in conn.execute(
+        "SELECT archive_path FROM history_snips WHERE session_id=? "
+        "UNION ALL SELECT archive_path FROM history_summaries WHERE session_id=?",
+        (sid, sid))]
+    conn.execute("DELETE FROM chat_log WHERE session_id=? AND agent_id=?", (sid, agent_id))
+    conn.execute("DELETE FROM history_snips WHERE session_id=?", (sid,))
+    conn.execute("DELETE FROM history_summaries WHERE session_id=?", (sid,))
+    conn.commit()
+    # The paths the rows store, plus the two shapes nothing stores: the plain
+    # archive is a pure function of the id, and every compaction writes a NEW
+    # <slug>-compacted-<stamp>.jsonl while overwriting the row's path — so the
+    # earlier ones are orphans only a glob can find. Exact shapes only: _slug()
+    # maps each non-alphanumeric to '-' and truncates at 60, so a looser
+    # <slug>*.jsonl glob could reach a neighbouring thread's archive.
+    targets = [Path(p) for p in archives if p]
+    targets.append(snip_compact.archive_path(home, sid))
+    targets += list((home / snip_compact.ARCHIVES_DIR).glob(
+        f"{snip_compact._slug(sid)}-compacted-*.jsonl"))
+    for path in targets:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass  # an archive we cannot remove must not fail the whole delete
+
+
+def _delete_conversation(conn, home: Path, agent_id: str, sid: str, agent=None) -> str | None:
+    """Delete a conversation; return the thread the agent must use from now on.
+
+    None means "that was not this agent's current thread" — nothing else moved.
+
+    The rule this exists for: you cannot delete the thread an agent is IN and
+    leave it there. switch() cannot fix it either — it re-reads the thread from
+    chat_log and those rows just went away, so it would leave the agent in an
+    EMPTY thread still labelled with the dead id. start_new() mints a thread
+    nobody has written to.
+
+    `agent` is the LIVE profile instance, or None when the dashboard has not
+    built it: deleting a document whose reading pane never opened must not build
+    the reader agent (building one needs a provider key) just to delete a thread.
+    """
+    current = agent is not None and (
+        agent.session.session_id == sid or dash_session(agent_id) == sid)
+    _purge_session(conn, home, agent_id, sid)
+    if not current:
+        application_contexts.clear(agent_id, sid)
+        return None
+    new_sid = f"s-{agent_id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    agent.session.start_new(new_sid)
+    # rekey, never clear-then-rekey: the snapshot of whatever this thread was
+    # looking at is still on the bridge and still belongs to this agent.
+    application_contexts.rekey(agent_id, sid, new_sid)
+    # Tell the gateway, not only the agent: /api/data and the History menu read
+    # the gateway's answer, so without this they go on reporting the thread we
+    # just removed. (session_action's `new` branch skips this, which is how a
+    # brand-new chat could still be listed under the old id.) pick_session also
+    # rewrites the picked-thread pointer, so no stale id survives in there.
+    pick_session(agent_id, new_sid)
+    return new_sid
+
+
+def session_action(payload: dict) -> dict:
+    """Chat history control: start a new conversation, switch to a past one, read
+    a conversation's history (read-only, for the live inbox), or delete one.
+    Sessions live in chat_log."""
+    action = payload.get("action")
+    agent_id = payload.get("agent_id") or "default"
+    get_profile(agent_id)
+    if action == "history":
+        # read-only view of a conversation — never touches the agent, so the
+        # web can poll it live (e.g. to show new Telegram messages arrive).
+        settings = load_settings()
+        settings.ensure_home()
+        conn = connect(settings.home)
+        sid = payload.get("id") or "default"
+        return {"ok": True, "agent_id": agent_id, "session_id": sid,
+                "history": _thread_history(conn, sid, agent_id)}
+    with agent_lock:
+        agent = get_agent(agent_id)
+        if action == "new":
+            stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            sid = f"s-{agent_id}-{stamp}"
+            previous = agent.session.session_id
+            agent.session.start_new(sid)
+            # The open document is screen state, not thread state, so it comes
+            # along — the same rule the idle rotation follows (see
+            # runtime.chat_stream). The reader publishes when you OPEN a
+            # document, so without this the brand-new thread looked up a key
+            # nothing had ever been written to and the agent answered "我看不到
+            # 你打开的是哪篇" about the document you still had on screen.
+            application_contexts.rekey(agent_id, previous, sid)
+            return {"ok": True, "agent_id": agent_id, "session_id": sid, "history": []}
+        if action == "switch":
+            sid = payload.get("id") or "default"
+            agent.session.switch(sid)
+            # Tell the gateway, not just the agent: "which thread is current"
+            # has to have one answer, and a thread you picked by hand must
+            # survive the idle rotation that runs at the top of your next
+            # message (see browser_agent.pick_session).
+            pick_session(agent_id, sid)
+            # Same meta-rich rows as the read-only "history" action, so a
+            # switched thread renders its full turn cards (gate/stats/tools/
+            # model) — not just the text. (These two paths used to disagree.)
+            return {"ok": True, "agent_id": agent_id, "session_id": sid,
+                    "history": _thread_history(agent.conn, sid, agent_id)}
+        if action == "delete":
+            # Hard delete, and it has to be complete: see _purge_session for the
+            # stores a conversation lives in. Deleting the thread you are IN also
+            # moves this agent to a fresh one, so your next message cannot append
+            # itself to a conversation that no longer exists.
+            sid = payload.get("id") or "default"
+            moved = _delete_conversation(agent.conn, load_settings().home, agent_id, sid,
+                                         agent=agent)
+            current = moved or agent.session.session_id
+            return {"ok": True, "agent_id": agent_id, "session_id": current,
+                    "history": _thread_history(agent.conn, current, agent_id)}
+    return {"error": f"unknown action {action}"}
+
+
+def _editor_cmd() -> list[str] | None:
+    """The user's code editor CLI: $ZHIYAN_EDITOR, then cursor, then code."""
+
+    custom = os.getenv("ZHIYAN_EDITOR")
+    if custom and shutil.which(custom):
+        return [custom]
+    for cli in ("cursor", "code"):
+        if shutil.which(cli):
+            return [cli]
+    return None
+
+
+def reveal_path(rel: str) -> dict:
+    """Open a file/folder under ZHIYAN_HOME — in the user's code editor if one
+    is on PATH (cursor/code/$ZHIYAN_EDITOR), otherwise reveal in Finder.
+    Restricted to paths inside ZHIYAN_HOME."""
+    import subprocess
+    import sys
+
+    settings = load_settings()
+    settings.ensure_home()
+    home = settings.home.resolve()
+    target = (home / (rel or ".")).resolve()
+    if target != home and home not in target.parents:
+        return {"error": "path is outside the .zhiyan home"}
+    if not target.exists():
+        return {"error": f"not found: {target}"}
+
+    editor = _editor_cmd()
+    if editor and target.is_file() and target.suffix != ".db":  # editors choke on sqlite
+        subprocess.run([*editor, str(target)], check=False)
+        return {"ok": True, "opened_in": editor[0], "path": str(target)}
+    if sys.platform != "darwin":
+        return {"error": f"no editor found and reveal is macOS-only — the path is {target}"}
+    subprocess.run(
+        ["open", "-R", str(target)] if target.is_file() else ["open", str(target)],
+        check=False,
+    )
+    return {"ok": True, "revealed": str(target)}
+
+
+def memory_action(payload: dict) -> dict:
+    """Human CRUD on memory from the web: update/delete facts & episodes,
+    rewrite SOUL.md. Writes the same sqlite file the agent uses (busy_timeout
+    covers contention); changes are live for the next agent turn."""
+    from zhiyan.memory.episodic.store import SqliteEpisodeStore
+    from zhiyan.memory.semantic.store import SqliteFactStore
+
+    settings = load_settings()
+    settings.ensure_home()
+    action = payload.get("action")
+    agent_id = payload.get("agent_id") or "default"
+    get_profile(agent_id)
+    if action == "save_soul":
+        text = (payload.get("content") or "").strip()
+        if not text:
+            return {"error": "SOUL cannot be empty"}
+        (settings.home / "SOUL.md").write_text(text + "\n")
+        return {"ok": True}
+    if action == "save_skill":
+        # Edit any loaded SKILL.md by hand (same file the agent's create_skill
+        # writes) — repo skills and home skills alike. Sandboxed to the two
+        # skills folders; validates the frontmatter before writing.
+        from pathlib import Path
+
+        from zhiyan.memory import bundled_skill_dirs
+        from zhiyan.memory.procedural.loader import _parse_text
+
+        text = (payload.get("content") or "").strip()
+        dest = Path(payload.get("path") or "").resolve()
+        allowed = [d.resolve() for d in bundled_skill_dirs()] + [(settings.home / "skills").resolve()]
+        if dest.name != "SKILL.md" or not any(a in dest.parents for a in allowed):
+            return {"error": "can only edit SKILL.md files inside the skills folders"}
+        if _parse_text(text, dest) is None:
+            return {"error": "invalid SKILL.md — needs a name and description in the frontmatter"}
+        dest.write_text(text.rstrip() + "\n", encoding="utf-8")
+        return {"ok": True}
+
+    conn = connect(settings.home)
+    facts = SqliteFactStore(conn, agent_id=agent_id)
+    episodes = SqliteEpisodeStore(conn, agent_id=agent_id)
+    if action == "delete_episode" and settings.episodic_store == "notion":
+        global _notion_episodes
+        with _notion_lock:
+            ok = _get_notion_store().delete(str(payload.get("id", "")))
+            # bust the TTL cache so the next collect() refetches — otherwise a
+            # deleted episode would linger on the page for up to 30s
+            _notion_episodes = None
+        return {"ok": ok}
+    try:
+        rid = int(payload.get("id", 0))
+    except (TypeError, ValueError):
+        return {"error": "bad id"}
+    if action == "update_fact":
+        return {"ok": facts.update(rid, payload.get("content", ""), payload.get("subject") or None)}
+    if action == "merge_fact":
+        try:
+            target_id = int(payload.get("target_id", 0))
+        except (TypeError, ValueError):
+            return {"error": "bad target id"}
+        return {"ok": facts.merge(rid, target_id)}
+    if action == "delete_fact":
+        return {"ok": facts.delete(rid)}
+    if action == "delete_episode":
+        return {"ok": episodes.delete(rid)}
+    return {"error": f"unknown action {action}"}
+
+
+def extras_action(payload: dict) -> dict:
+    """Publish or clear the Application snapshot used by the next agent turn.
+
+    Preferred payload::
+
+        {"application": "reader", "resource": "paper.md",
+         "content": "...", "selection": "...", "session_id": "..."}
+
+    The earlier ``type=selection/text/source`` shape remains accepted so an old
+    open web keeps working during an upgrade.
+    """
+    agent_id = (payload.get("agent_id") or "default").strip()
+    get_profile(agent_id)
+    session_id = (payload.get("session_id") or dash_session(agent_id)).strip()
+    if payload.get("action") == "clear":
+        cleared = application_contexts.clear(agent_id, session_id)
+        return {"ok": True, "cleared": cleared}
+
+    legacy_selection = payload.get("type") == "selection"
+    if payload.get("type") and not legacy_selection:
+        return {"error": f"unknown context type: {payload.get('type')}"}
+
+    previous = application_contexts.get(agent_id, session_id)
+    application = payload.get("application") or (
+        previous.application if previous else "reader"
+    )
+    resource = payload.get("resource", payload.get("source"))
+    if resource is None:
+        resource = previous.resource if previous else ""
+    content = payload.get("content")
+    if content is None:
+        content = previous.content if previous else ""
+    selection = payload.get("selection", payload.get("text"))
+    if selection is None:
+        selection = previous.selection if previous else ""
+
+    state = application_contexts.publish(
+        agent_id=agent_id,
+        session_id=session_id,
+        application=application,
+        resource=resource,
+        content=content,
+        selection=selection,
+        metadata=payload.get("metadata") or (previous.metadata if previous else {}),
+    )
+    return {
+        "ok": True,
+        "agent_id": agent_id,
+        "session_id": session_id,
+        "application": state.application,
+        "resource": state.resource,
+        "content_chars": len(state.content),
+        "selection_chars": len(state.selection),
+        "truncated": (
+            len(payload.get("content") or "") > application_contexts.max_content_chars
+            or len(payload.get("selection", payload.get("text")) or "")
+            > application_contexts.max_selection_chars
+        ),
+    }
+
+
+def _study_ok(conn, result=None) -> dict:
+    """A write's answer: the compact snapshot plus whatever the action returned."""
+    out = {"ok": True, "data": study_info(conn)}
+    if result is not None:
+        out["result"] = result
+    return out
+
+
+def study_action(payload: dict) -> dict:
+    """学习页的写入口。动作名就是函数名：create_project / add_material /
+    extract_units / build_plan / replan / generate_cards / accept_cards /
+    grade_card / import_vocab / submit_writing / ...。
+
+    成功的写顺带返回一份 study_info 快照，页面拿到就整体重画；读动作只返回
+    ``result``，不重复下发快照。坏输入是正常情况，ValueError 在这里变成
+    ``{"ok": False, "error": 人话}``，不冒到 HTTP 路由层。
+    """
+    from zhiyan.applications import study as st
+    from zhiyan.ops import study_cards, study_language
+
+    settings = load_settings()
+    settings.ensure_home()
+    conn = connect(settings.home)
+    action = payload.get("action", "")
+    try:
+        if action == "create_project":
+            project = st.create_project(
+                conn,
+                kind=payload.get("kind", ""),
+                title=payload.get("title", ""),
+                subject=payload.get("subject", ""),
+                target_language=payload.get("target_language", ""),
+                level=payload.get("level", ""),
+                start_date=payload.get("start_date"),
+                exam_date=payload.get("exam_date"),
+                daily_minutes=payload.get("daily_minutes", 60),
+                new_cards_per_day=payload.get("new_cards_per_day", 20),
+                target_items=payload.get("target_items"),
+                settings=payload.get("settings") if isinstance(
+                    payload.get("settings"), dict) else None,
+                note=payload.get("note", ""),
+            )
+            return _study_ok(conn, project)
+
+        if action == "update_project":
+            fields = {key: payload[key] for key in (
+                "title", "subject", "target_language", "level", "start_date",
+                "exam_date", "daily_minutes", "new_cards_per_day", "target_items",
+                "status", "note", "settings") if key in payload}
+            return _study_ok(conn, st.update_project(
+                conn, payload.get("project_id", ""), **fields))
+
+        if action == "archive_project":
+            if not st.archive_project(conn, payload.get("project_id", "")):
+                return {"ok": False, "error": "这个项目已经不在了，或已经归档"}
+            return _study_ok(conn)
+
+        if action == "add_material":
+            material = st.add_material(
+                conn, payload.get("project_id", ""), payload.get("doc_id", ""),
+                payload.get("role", "textbook"))
+            return _study_ok(conn, material)
+
+        if action == "remove_material":
+            if not st.remove_material(conn, payload.get("project_id", ""),
+                                      payload.get("doc_id", "")):
+                return {"ok": False, "error": "这份资料不在项目里"}
+            return _study_ok(conn)
+
+        if action == "extract_units":
+            return _study_ok(conn, st.extract_units(
+                conn, settings.home, payload.get("project_id", "")))
+
+        if action == "update_unit":
+            unit = st.update_unit(
+                conn, payload.get("unit_id", ""),
+                title=payload.get("title") if "title" in payload else None,
+                weight=payload.get("weight") if "weight" in payload else None,
+                status=payload.get("status") if "status" in payload else None,
+            )
+            return _study_ok(conn, unit)
+
+        if action == "merge_units":
+            unit_ids = payload.get("unit_ids") or []
+            if not isinstance(unit_ids, list):
+                raise ValueError("unit_ids 必须是数组")
+            merged = st.merge_units(conn, payload.get("project_id", ""), unit_ids)
+            return _study_ok(conn, merged)
+
+        if action == "delete_unit":
+            if not st.delete_unit(conn, payload.get("unit_id", "")):
+                return {"ok": False, "error": "这个单元已经不在了"}
+            return _study_ok(conn)
+
+        if action == "read_unit":
+            return {"ok": True, "result": st.unit_text(
+                conn, payload.get("unit_id", ""))}
+
+        if action == "plan":
+            plan = st.active_plan(conn, payload.get("project_id", ""))
+            if plan is None:
+                return {"ok": True, "result": None}
+            units = {unit["id"]: unit for unit in st.list_units(
+                conn, payload.get("project_id", ""))}
+            for item in plan["items"]:
+                item["units"] = [units[unit_id] for unit_id in item.get("unit_ids", [])
+                                 if unit_id in units]
+            return {"ok": True, "result": plan}
+
+        if action == "build_plan":
+            return _study_ok(conn, st.build_plan(conn, payload.get("project_id", "")))
+
+        if action == "replan":
+            return _study_ok(conn, st.replan(conn, payload.get("project_id", "")))
+
+        if action == "today":
+            return {"ok": True, "result": st.today_agenda(
+                conn, payload.get("project_id", ""))}
+
+        if action == "list_units":
+            return {"ok": True, "result": st.list_units(
+                conn, payload.get("project_id", ""),
+                payload.get("status") or None)}
+
+        if action == "list_cards":
+            return {"ok": True, "result": st.list_cards(
+                conn, payload.get("project_id", ""),
+                status=payload.get("status") or None,
+                card_type=payload.get("card_type") or None,
+                query=payload.get("query", ""),
+                limit=payload.get("limit", 200))}
+
+        if action == "add_card":
+            project_id = payload.get("project_id", "")
+            unit_id = payload.get("unit_id") or None
+            if unit_id:
+                unit = st.get_unit(conn, unit_id)
+                if unit is None or unit["project_id"] != project_id:
+                    raise ValueError("这个单元不属于当前项目")
+            card = st.add_card(
+                conn, project_id,
+                card_type=payload.get("card_type", ""),
+                front=payload.get("front", ""),
+                back=payload.get("back", ""),
+                unit_id=unit_id,
+                source_doc_id=payload.get("source_doc_id", ""),
+                source_offset=payload.get("source_offset"),
+                source_quote=payload.get("source_quote", ""),
+                extra=payload.get("extra") if isinstance(payload.get("extra"), dict) else None,
+                tags="manual",
+                status="candidate",
+            )
+            if card is None:
+                return {"ok": False, "error": "这个项目里已经有同样的卡片"}
+            return _study_ok(conn, card)
+
+        if action == "update_card":
+            card = st.update_card(
+                conn, payload.get("card_id", ""),
+                front=payload.get("front") if "front" in payload else None,
+                back=payload.get("back") if "back" in payload else None,
+                extra=payload.get("extra") if isinstance(payload.get("extra"), dict) else None,
+                tags=payload.get("tags") if "tags" in payload else None,
+            )
+            return _study_ok(conn, card)
+
+        if action == "accept_cards":
+            ids = payload.get("card_ids") or []
+            if not isinstance(ids, list):
+                raise ValueError("card_ids 必须是数组")
+            return _study_ok(conn, {"accepted": st.accept_cards(conn, ids)})
+
+        if action == "delete_card":
+            if not st.delete_card(conn, payload.get("card_id", "")):
+                return {"ok": False, "error": "这张卡片已经不在了"}
+            return _study_ok(conn)
+
+        if action == "set_card_status":
+            status = payload.get("status", "")
+            if not st.set_card_status(conn, payload.get("card_id", ""), status):
+                return {"ok": False, "error": "这张卡片已经不在了"}
+            return _study_ok(conn)
+
+        if action in {"generate_cards", "extract_vocab"}:
+            result = study_cards.generate_cards(
+                settings, conn, payload.get("unit_id", ""),
+                count=payload.get("count", 6),
+                card_types=("vocab",) if action == "extract_vocab" else None,
+            )
+            if not result.get("ok"):
+                return result
+            return _study_ok(conn, result)
+
+        if action == "review_queue":
+            return {"ok": True, "result": st.review_queue(
+                conn, payload.get("project_id", ""),
+                day=payload.get("day") or None)}
+
+        if action == "grade_card":
+            rating = payload.get("rating")
+            if rating is None:
+                raise ValueError("rating 不能为空")
+            return _study_ok(conn, st.grade_card(
+                conn, payload.get("card_id", ""), int(rating),
+                elapsed_ms=payload.get("elapsed_ms", 0),
+                score=payload.get("score")))
+
+        if action == "list_audio":
+            return {"ok": True, "result": st.list_audio(
+                conn, payload.get("project_id", ""))}
+
+        if action == "update_audio":
+            audio = st.update_audio(
+                conn, payload.get("audio_id", ""),
+                title=payload.get("title") if "title" in payload else None,
+                transcript=payload.get("transcript") if "transcript" in payload else None,
+            )
+            return _study_ok(conn, audio)
+
+        if action == "delete_audio":
+            if not st.delete_audio(conn, settings.home, payload.get("audio_id", "")):
+                return {"ok": False, "error": "这段音频已经不在了"}
+            return _study_ok(conn)
+
+        if action == "create_dictation":
+            audio = st.get_audio(conn, payload.get("audio_id", ""))
+            if audio is None:
+                return {"ok": False, "error": "这段音频已经不在了"}
+            card = st.create_dictation_card(
+                conn, audio["project_id"], audio["id"],
+                transcript=payload.get("transcript", ""))
+            return _study_ok(conn, card)
+
+        if action == "import_vocab":
+            result = study_language.import_words(
+                conn, payload.get("project_id", ""), payload.get("text", ""))
+            return _study_ok(conn, result)
+
+        if action == "submit_writing":
+            text = payload.get("text", "")
+            result = study_language.correct_writing(
+                settings, conn, payload.get("project_id", ""), text)
+            if not result.get("ok"):
+                return result
+            minutes = payload.get("minutes", 0) or 0
+            try:
+                result["session"] = st.log_session(
+                    conn, payload.get("project_id", ""), kind="writing",
+                    minutes=minutes,
+                    meta={"text": str(text)[:2000],
+                          "corrected": result["corrected"][:2000],
+                          "notes": result["notes"]})
+            except ValueError:
+                result["session"] = None
+            return _study_ok(conn, result)
+
+        if action == "language_progress":
+            return {"ok": True, "result": st.language_progress(
+                conn, payload.get("project_id", ""))}
+
+        if action == "log_session":
+            session = st.log_session(
+                conn, payload.get("project_id", ""),
+                kind=payload.get("kind", ""), minutes=payload.get("minutes", 0),
+                day=payload.get("date"),
+                meta=payload.get("meta") if isinstance(payload.get("meta"), dict) else None)
+            return _study_ok(conn, session)
+
+        if action == "overview":
+            return {"ok": True, "data": study_info(conn)}
+
+        return {"ok": False, "error": f"未知操作：{action}"}
+    # A user typing in a form is a normal source of bad input, so these are
+    # answers, not exceptions that should reach the route.
+    except (TypeError, ValueError) as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+def study_audio_upload(project_id: str, name: str, raw: bytes) -> dict:
+    """Raw audio body → archive file + study_audio row."""
+    from zhiyan.applications import study as st
+
+    settings = load_settings()
+    settings.ensure_home()
+    conn = connect(settings.home)
+    try:
+        audio = st.save_audio(conn, settings.home, project_id, name=name, raw=raw)
+    except (TypeError, ValueError) as exc:
+        return {"ok": False, "error": str(exc)}
+    return {"ok": True, "data": study_info(conn), "result": audio}
+
+
+def library_action(payload: dict) -> dict:
+    """The document library: add, list, open, search, delete.
+
+    ``open`` returns the extracted TEXT (what the reader shows for markdown and
+    text) and the ``file_url`` the browser should fetch for the ORIGINAL when
+    it can render it better than we can — a PDF goes to pdf.js, which needs the
+    real bytes, not our text.
+
+    Documents are workspace-level (see applications/library.py), so there is no
+    agent filter here. ``added_by`` is stamped from the payload for provenance.
+    """
+    import base64
+    import binascii
+
+    from zhiyan.applications.library import (
+        delete_document,
+        get_document,
+        list_documents,
+        parse_and_save,
+        rename_document,
+        search_documents,
+        text_window,
+    )
+    from zhiyan.applications.reader import fetch_url
+    from zhiyan.db import connect
+    # TWO branches below need this (list and open), so it lives here and not
+    # inside either one — nested inside the first, the second raised NameError,
+    # which the route's generic handler turned into "document": missing, and the
+    # reader refused to open anything at all.
+    from zhiyan.rag.index import decorate
+
+    settings = load_settings()
+    settings.ensure_home()
+    conn = connect(settings.home)
+    agent_id = payload.get("agent_id") or "default"
+    get_profile(agent_id)
+    action = payload.get("action", "")
+
+    if action == "list":
+        # home here so a row stored with the wrong kind repairs itself (see
+        # library._repair_binary_kinds) -- this is the listing the reader calls
+        # before it decides how to render anything.
+        documents = list_documents(conn, limit=200, home=settings.home)
+        # Each row carries its own index state ("已索引" / "建立中 12/54" /
+        # "未建立"), so the library list is the one place that answers "is this
+        # document searchable by meaning yet?" -- no second request per row.
+        return {"ok": True, "documents": decorate(settings, conn, documents)}
+    if action == "search":
+        return {"ok": True, "results": search_documents(conn, str(payload.get("query", "")))}
+    if action in {"open", "text"}:
+        row = get_document(conn, str(payload.get("doc_id", "")))
+        if row is None:
+            return {"ok": False, "error": "文档不存在"}
+        window = text_window(row["content"], payload.get("offset", 0),
+                             payload.get("limit", 400000))
+        # The index state rides along here too. Opening a document and listing
+        # the library are two different requests, and the panel's header reads
+        # `currentDoc.index` — if only the LIST carried it, opening a document
+        # straight from a link would show a header that knew nothing about it.
+        document = {
+            "id": row["id"], "title": row["title"], "kind": row["kind"],
+            "suffix": row["suffix"], "source": row["source"],
+            "chars": row["chars"], "bytes": row["bytes"],
+            "created_at": row["created_at"],
+        }
+        return {"ok": True, "document": decorate(settings, conn, [document])[0],
+                "text": window["text"], "has_more": window["has_more"],
+                "file_url": f"/api/library/file?id={row['id']}"}
+    if action == "rename":
+        name = rename_document(conn, str(payload.get("doc_id", "")), str(payload.get("title", "")))
+        if name is None:
+            return {"ok": False, "error": "文档不存在，或者标题是空的"}
+        # The new name is what the reading pane and the bridge should carry, so
+        # the caller gets the name that is actually on file (trimmed, capped).
+        return {"ok": True, "title": name}
+    if action == "delete":
+        doc_id = str(payload.get("doc_id", ""))
+        gone = delete_document(conn, settings.home, doc_id)
+        if gone:
+            # A document OWNS its reading-pane conversation (one document, one
+            # conversation — browser_agent.DOC_PREFIX), so deleting the document
+            # deletes that conversation with it. Otherwise a deleted document's
+            # chat stays in History and its rows stay in chat_log forever.
+            # current() returns the live agent only if there is one: this must
+            # never BUILD the reader agent (that needs a provider key) — a
+            # document you never asked about has no live agent to move.
+            _delete_conversation(conn, settings.home, READER_AGENT,
+                                 browser_agent.DOC_PREFIX + doc_id,
+                                 agent=browser_agent.current(READER_AGENT))
+        return {"ok": gone} if gone else {"ok": False, "error": "文档不存在"}
+    if action == "reindex":
+        # The only way back from 索引失败. An index job that failed — ollama was
+        # not running yet, the model had not been pulled — leaves a row the
+        # worker deliberately never retries, so without this the document is
+        # unsearchable forever and there is nothing on screen to press.
+        from zhiyan.rag import worker
+        from zhiyan.rag.index import index_info
+
+        doc_id = str(payload.get("doc_id", "") or "")
+        if not doc_id or get_document(conn, doc_id) is None:
+            return {"ok": False, "error": "文档不存在"}
+        worker.enqueue(conn, doc_id)
+        return {"ok": True, "index": index_info(settings, conn, doc_id)}
+    if action in {"upload", "url"}:
+        try:
+            if action == "url":
+                fetched = fetch_url(str(payload.get("url", "")).strip())
+                name = fetched["name"]
+                # Keep the source URL so the library shows where it came from;
+                # give the download a suffix when the URL path had none, so the
+                # stored original is served with the right content type.
+                content_type = fetched["content_type"]
+                if not os.path.splitext(name)[1]:
+                    name += {"application/pdf": ".pdf", "text/html": ".html",
+                             "text/markdown": ".md"}.get(
+                                 content_type.split(";")[0].strip(), ".txt")
+                raw, source = fetched["raw"], fetched["source"]
+            else:
+                name = str(payload.get("name", ""))
+                data_url = str(payload.get("data", ""))
+                if not name or not data_url.startswith("data:") or "," not in data_url:
+                    raise ReaderError("上传数据格式无效")
+                header, encoded = data_url.split(",", 1)
+                try:
+                    raw = base64.b64decode(encoded, validate=True)
+                except (ValueError, binascii.Error) as exc:
+                    raise ReaderError("上传数据不是有效的 base64 文件") from exc
+                content_type, source = header, name
+            doc = parse_and_save(conn, settings.home, name=name, raw=raw,
+                                 content_type=content_type, source=source,
+                                 added_by=agent_id)
+        except ReaderError as exc:
+            return {"ok": False, "error": str(exc)}
+        return {"ok": True, "document": doc}
+    return {"error": f"unknown action {action}"}
+
+
+def library_file(conn, home, doc_id: str):
+    """The ORIGINAL FILE of a document, for the browser to render itself.
+
+    Returns the PATH, not its bytes. The HTTP layer needs to stat it and seek
+    into it so a long PDF can be served a range at a time (see
+    ``ops/web/http_range.py``); handing back a whole ``bytes`` would mean the
+    file was already in memory, and slicing it after the fact is not a fix.
+    """
+    from zhiyan.applications.library import file_path, get_document
+
+    target = file_path(conn, home, doc_id)
+    if target is None:
+        return None, None, None
+    row = get_document(conn, doc_id)
+    return target, row["kind"], row["suffix"]
+
+
+def library_upload_bytes(name: str, raw: bytes, content_type: str = "",
+                         agent_id: str = "default") -> dict:
+    """Store bytes the browser streamed straight to us — no base64, no JSON.
+
+    The data-URL door (`library_action`'s ``upload``) is still there and still
+    fine for a note or a markdown file. It is NOT fine for a long PDF: base64
+    turns 20 MB into 27 MB of text, and that text then has to exist three times
+    over (the JS string, the JSON body, the decoded bytes) inside one process.
+    Sending the file itself as the request body skips all of it.
+
+    Same rule as the other door: the filename decides only the KIND and the
+    TITLE. What lands on disk is a fresh uuid (see ``library.save_document``),
+    so a name like ``../../escape.md`` is a name and nothing more.
+    """
+    from zhiyan.applications.library import parse_and_save
+    from zhiyan.applications.reader import ReaderError
+
+    settings = load_settings()
+    settings.ensure_home()
+    conn = connect(settings.home)
+    get_profile(agent_id or "default")
+    try:
+        doc = parse_and_save(conn, settings.home, name=name, raw=raw,
+                             content_type=content_type, source=name,
+                             added_by=agent_id or "default")
+    except ReaderError as exc:
+        return {"ok": False, "error": str(exc)}
+    return {"ok": True, "document": doc}
+
+
+def knowledge_action(payload: dict) -> dict:
+    """Store, retrieve, and delete knowledge notes with [[links]] support.
+
+    The web is the human's own view, so reading, editing and deleting all
+    span every Agent — you can open and save any note you can see, whichever
+    Agent wrote it, and the note keeps its original agent_id. Only `create`
+    still uses the selected Agent, because a NEW note has to be stamped with
+    somebody. (The Agents' tools remain scoped: this is the browser, not a tool
+    call.)
+    """
+    from zhiyan.db import connect
+    from zhiyan.tools.knowledge import (
+        create_note,
+        delete_note,
+        get_linked_notes,
+        get_note,
+        list_folders,
+        list_notes,
+        search_notes,
+        update_note,
+    )
+
+    settings = load_settings()
+    conn = connect(settings.home)
+    agent_id = payload.get("agent_id") or "default"
+    get_profile(agent_id)
+
+    action = payload.get("action", "")
+
+    if action == "list":
+        notes = list_notes(conn, payload.get("folder"), agent_id=None)
+        folders = list_folders(conn, agent_id=None)
+        return {"ok": True, "notes": notes, "folders": folders}
+    elif action == "get":
+        note = get_note(conn, payload.get("note_id", ""), agent_id=None)
+        return {"ok": True, "note": note} if note else {"ok": False, "error": "Note not found"}
+    elif action == "create":
+        try:
+            note = create_note(
+                conn,
+                title=payload.get("title", ""),
+                folder=payload.get("folder", "default"),
+                content=payload.get("content", ""),
+                agent_id=agent_id,
+            )
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+        return {"ok": True, "note": note}
+    elif action == "update":
+        try:
+            note = update_note(
+                conn,
+                payload.get("note_id", ""),
+                payload.get("content", ""),
+                title=payload.get("title"),
+                folder=payload.get("folder"),
+                agent_id=None,
+            )
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+        return {"ok": True, "note": note} if note else {"ok": False, "error": "Note not found"}
+    elif action == "delete":
+        deleted = delete_note(conn, payload.get("note_id", ""), agent_id=None)
+        return {"ok": deleted, "error": "Note not found"} if not deleted else {"ok": True}
+    elif action == "search":
+        notes = search_notes(conn, payload.get("query", ""), agent_id=None)
+        return {"ok": True, "notes": notes}
+    elif action == "links":
+        notes = get_linked_notes(conn, payload.get("note_id", ""), agent_id=None)
+        return {"ok": True, "notes": notes}
+    else:
+        return {"error": f"unknown knowledge action: {action}"}
+
+
+
+
+# Today's trace file → (size we last measured, how many lines it had). Holding
+# the size is what makes the common poll cheap: the trace is append-only, so an
+# unchanged size means an unchanged line count, and the answer is known without
+# reading the file. Measured on an 85 KB / 111-line trace over a keep-alive
+# connection (what a browser uses — a fresh connection per call adds ~13 ms of
+# TCP setup that hides everything below it): the poll took 7.7 ms, of which
+# 5.3 ms was re-reading and re-parsing a file that had not changed. At 2.2 polls
+# a second that was 62 seconds of server time an hour, spent almost always to
+# report that there was nothing to report.
+_TRACE_LINES: dict[str, tuple[int, int]] = {}
+
+
+def _trace_line_count(path: Path) -> int:
+    """How many lines `path` has, counted only when its size has changed."""
+    size = path.stat().st_size
+    cached = _TRACE_LINES.get(str(path))
+    if cached is not None and cached[0] == size:
+        return cached[1]
+    count = sum(1 for _ in iter_trace_lines(path))
+    _TRACE_LINES[str(path)] = (size, count)
+    return count
+
+
+def events_since(cursor):
+    """New trace events past `cursor` (a line count in today's trace file).
+    Both the browser and CLI append to this same file,
+    so the live diagram lights up for all of them. cursor=None returns just
+    the current tail so the browser starts fresh instead of replaying history."""
+    settings = load_settings()
+    settings.ensure_home()
+    path = settings.home / "traces" / (datetime.now().strftime("%Y-%m-%d") + ".jsonl")
+    if not path.exists():
+        return {"events": [], "cursor": 0}
+    try:
+        total = _trace_line_count(path)
+    except TraceEncodingError as exc:
+        return {"events": [], "cursor": 0, "error": str(exc)}
+    if cursor is None or cursor < 0 or cursor >= total:
+        # Two cases, one answer. cursor=None (a fresh browser, or one resuming
+        # after a pause) means "start from now"; a cursor at or past the end
+        # means "you have seen all of it" — which is what most polls are. Both
+        # return the current tail as the new cursor, and neither reads the file.
+        return {"events": [], "cursor": total}
+    try:
+        lines = list(iter_trace_lines(path))
+    except TraceEncodingError as exc:
+        return {"events": [], "cursor": 0, "error": str(exc)}
+    out = []
+    for ln in lines[cursor:]:
+        try:
+            out.append(json.loads(ln))
+        except json.JSONDecodeError:
+            pass
+    # len(lines), not `total`: a turn may have appended a line between the count
+    # and this read, and reporting the older number would hand those lines back
+    # a second time on the next poll — the diagram would blink twice per turn.
+    return {"events": out, "cursor": len(lines)}

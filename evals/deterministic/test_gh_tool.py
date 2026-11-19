@@ -29,7 +29,7 @@ import subprocess
 
 import pytest
 
-from knowme.tools import github
+from zhiyan.tools import github
 
 
 class Boom(Exception):
@@ -220,11 +220,11 @@ def test_the_tool_is_off_unless_asked_for(tmp_path):
     must not appear for people who never asked for it (the dependency-footprint
     ladder). The gather workflow imports this module directly and works with
     the switch off — the switch only decides whether the MODEL can reach it."""
-    from evals.helpers import ScriptedClient, make_knowme
+    from evals.helpers import ScriptedClient, make_zhiyan
 
-    off = make_knowme(tmp_path / "off", client=ScriptedClient([]), gh_tool=False)
+    off = make_zhiyan(tmp_path / "off", client=ScriptedClient([]), gh_tool=False)
     assert "github_read" not in off.tools._tools
-    on = make_knowme(tmp_path / "on", client=ScriptedClient([]), gh_tool=True)
+    on = make_zhiyan(tmp_path / "on", client=ScriptedClient([]), gh_tool=True)
     assert "github_read" in on.tools._tools
 
 

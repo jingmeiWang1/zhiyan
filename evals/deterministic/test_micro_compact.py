@@ -15,10 +15,11 @@ Three things have to hold, in order of how much they matter:
 
 from __future__ import annotations
 
-from knowme.ops.pricing import MODEL_CONTEXT, context_for, remember_context
-from knowme.runtime import micro_compact as mc
-from knowme.runtime import tool_budget
-from knowme.tools.tool_results import make_tool
+from zhiyan.runtime import micro_compact as mc
+from zhiyan.runtime import tool_budget
+
+from zhiyan.ops.pricing import MODEL_CONTEXT, context_for, remember_context
+from zhiyan.tools.tool_results import make_tool
 
 KEEP, MIN = 3, 120
 
@@ -114,7 +115,7 @@ def test_a_pointer_is_never_wrapped_in_another_pointer(tmp_path):
 
     A pointer is about 80 characters, comfortably under the 120 default — so
     today the min_chars floor happens to protect it. That is two unrelated
-    numbers agreeing by luck, and a user lowering KNOWME_MICRO_MIN_CHARS would
+    numbers agreeing by luck, and a user lowering ZHIYAN_MICRO_MIN_CHARS would
     turn the conversation into pointers to pointers, each one losing a little
     more of the trail. Run twice with the floor switched off entirely."""
     history = _history(("old", [900]), ("new", [400, 400, 400]))
@@ -177,5 +178,5 @@ def test_the_window_resolves_from_most_specific_source_first(tmp_path):
 
 
 def test_an_explicit_env_override_is_honoured(monkeypatch):
-    monkeypatch.setenv("KNOWME_MODEL_CONTEXT", "64000")
+    monkeypatch.setenv("ZHIYAN_MODEL_CONTEXT", "64000")
     assert context_for("xai", "unlisted-model") == 64_000

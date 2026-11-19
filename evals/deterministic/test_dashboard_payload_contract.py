@@ -18,7 +18,7 @@ was allowed to be something the browser cannot use, and the failure was silent.
    menu of the agent you just switched to reads the old payload's empty list and
    announces "还没有历史对话".
 
-3. With KNOWME_EPISODIC_STORE=notion the two Notion caches were only defined in
+3. With ZHIYAN_EPISODIC_STORE=notion the two Notion caches were only defined in
    runtime.py and copied into data.py by the package wrapper's _sync_state() —
    which the HTTP route never calls (server.py imports the data module
    directly). On a real request the names did not exist and the payload was a
@@ -36,8 +36,8 @@ import time
 
 import pytest
 
-from knowme.config import Settings
-from knowme.ops.web import data as web_data
+from zhiyan.config import Settings
+from zhiyan.ops.web import data as web_data
 
 
 def _stub(monkeypatch, settings, module=web_data):
@@ -98,7 +98,7 @@ def test_a_list_tool_result_cannot_take_the_payload_down(tmp_path, monkeypatch):
 
 def test_as_text_is_the_one_shape_a_tool_result_takes():
     """The helper the loop and the web reader both use, exercised directly."""
-    from knowme.core.tools import as_text
+    from zhiyan.core.tools import as_text
 
     assert as_text("already text") == "already text"
     assert as_text(None) == ""
@@ -106,7 +106,7 @@ def test_as_text_is_the_one_shape_a_tool_result_takes():
     assert as_text({"n": 1}) == '{"n": 1}'
     assert as_text(3) == "3"
     # The web reader classifies whatever it finds, old trace rows included.
-    from knowme.ops.web.runtime import _tool_status, _tool_summary
+    from zhiyan.ops.web.runtime import _tool_status, _tool_summary
 
     assert _tool_status(["a"]) == "ok"
     assert _tool_status("Error: nope") == "error"
@@ -118,7 +118,7 @@ def test_the_payload_names_its_agent_and_scopes_sessions_to_it(tmp_path, monkeyp
     """The page can only refuse a stale answer if the answer says who it is for."""
     settings = Settings(home=tmp_path)
     settings.ensure_home()
-    conn = __import__("knowme.db", fromlist=["connect"]).connect(tmp_path)
+    conn = __import__("zhiyan.db", fromlist=["connect"]).connect(tmp_path)
     conn.execute("INSERT INTO chat_log (role, content, agent_id, session_id) "
                  "VALUES ('user', 'research hello', 'research', 's-research-1')")
     conn.commit()
@@ -136,7 +136,7 @@ def test_the_payload_names_its_agent_and_scopes_sessions_to_it(tmp_path, monkeyp
 
 def test_notion_episodes_degrade_instead_of_naming_an_undefined_global(
         tmp_path, monkeypatch):
-    """KNOWME_EPISODIC_STORE=notion on the HTTP code path."""
+    """ZHIYAN_EPISODIC_STORE=notion on the HTTP code path."""
     settings = Settings(home=tmp_path, episodic_store="notion")
     settings.ensure_home()
     _stub(monkeypatch, settings)
@@ -171,10 +171,10 @@ def test_a_new_conversation_keeps_the_document_you_have_open(tmp_path, monkeypat
     idle rotation already carried the snapshot across (and is tested in
     test_session_rotation.py); this is the same rule for the button.
     """
-    from evals.helpers import ScriptedClient, make_knowme
-    from knowme.ops import web
+    from evals.helpers import ScriptedClient, make_zhiyan
+    from zhiyan.ops import web
 
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     old = app.session.session_id
     web.application_contexts.publish(
         agent_id=app.agent_id, session_id=old, application="reader",

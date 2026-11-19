@@ -2,7 +2,7 @@
 
 This suite exists because the contract was never written down, so the second
 backend silently didn't meet it. `SqliteFactStore` had six methods,
-`SupabaseFactStore` had two, and `KNOWME_SEMANTIC_STORE=supabase` therefore
+`SupabaseFactStore` had two, and `ZHIYAN_SEMANTIC_STORE=supabase` therefore
 broke the dashboard's memory page, the manage_memory tool's update and delete
 — and worst of all made `search_with_ids` return `[]` through a
 `hasattr(...) else []` guard, so the agent told users a fact didn't exist while
@@ -11,7 +11,7 @@ it sat in the database.
 So the shape of this file matters more than any single assertion: it is
 parametrized over BACKENDS, and every backend runs every test. Adding a store
 is not "write a class"; it is "write a class that passes this". That is the
-whole point of knowme/memory/semantic/base.py.
+whole point of zhiyan/memory/semantic/base.py.
 
 The first test is the one that would have caught the original bug on the day it
 shipped, and it is one line: `isinstance(store, FactStore)`. A runtime
@@ -32,9 +32,9 @@ import os
 
 import pytest
 
-from knowme.db import connect
-from knowme.memory.semantic.base import FactStore
-from knowme.memory.semantic.store import SqliteFactStore
+from zhiyan.db import connect
+from zhiyan.memory.semantic.base import FactStore
+from zhiyan.memory.semantic.store import SqliteFactStore
 
 
 def _sqlite_store(tmp_path):
@@ -46,10 +46,10 @@ def _supabase_store(tmp_path):
     billed per call), so it is gated on an explicit env var rather than on the
     credentials happening to be present — a maintainer with a populated .env
     should not start paying for embeddings by running the test suite."""
-    if os.getenv("KNOWME_TEST_SUPABASE") != "1":
-        pytest.skip("set KNOWME_TEST_SUPABASE=1 (plus SUPABASE_* and OPENAI_API_KEY) to include it")
-    from knowme.config import Settings
-    from knowme.memory.semantic.supabase_store import SupabaseFactStore
+    if os.getenv("ZHIYAN_TEST_SUPABASE") != "1":
+        pytest.skip("set ZHIYAN_TEST_SUPABASE=1 (plus SUPABASE_* and OPENAI_API_KEY) to include it")
+    from zhiyan.config import Settings
+    from zhiyan.memory.semantic.supabase_store import SupabaseFactStore
 
     return SupabaseFactStore(Settings(home=tmp_path))
 
@@ -59,19 +59,19 @@ def _mem0_store(tmp_path):
     service and writes real memories into a real account. A maintainer running
     the suite must not start filling somebody's Mem0 workspace with test facts
     about Priya's meeting preferences."""
-    if os.getenv("KNOWME_TEST_MEM0") != "1":
-        pytest.skip("set KNOWME_TEST_MEM0=1 (plus MEM0_API_KEY) to include it")
-    from knowme.config import Settings
-    from knowme.memory.semantic.mem0_store import Mem0FactStore
+    if os.getenv("ZHIYAN_TEST_MEM0") != "1":
+        pytest.skip("set ZHIYAN_TEST_MEM0=1 (plus MEM0_API_KEY) to include it")
+    from zhiyan.config import Settings
+    from zhiyan.memory.semantic.mem0_store import Mem0FactStore
 
     return Mem0FactStore(Settings(home=tmp_path))
 
 
 def _zep_store(tmp_path):
-    if os.getenv("KNOWME_TEST_ZEP") != "1":
-        pytest.skip("set KNOWME_TEST_ZEP=1 (plus ZEP_API_KEY) to include it")
-    from knowme.config import Settings
-    from knowme.memory.semantic.zep_store import ZepFactStore
+    if os.getenv("ZHIYAN_TEST_ZEP") != "1":
+        pytest.skip("set ZHIYAN_TEST_ZEP=1 (plus ZEP_API_KEY) to include it")
+    from zhiyan.config import Settings
+    from zhiyan.memory.semantic.zep_store import ZepFactStore
 
     return ZepFactStore(Settings(home=tmp_path))
 
@@ -81,10 +81,10 @@ def _langmem_store(tmp_path):
     search still bills OpenAI for embeddings, so it stays opt-in like the rest.
     Without the index the store is a plain dict and the tests would pass while
     measuring nothing."""
-    if os.getenv("KNOWME_TEST_LANGMEM") != "1":
-        pytest.skip("set KNOWME_TEST_LANGMEM=1 (plus OPENAI_API_KEY) to include it")
-    from knowme.config import Settings
-    from knowme.memory.semantic.langmem_store import LangMemFactStore
+    if os.getenv("ZHIYAN_TEST_LANGMEM") != "1":
+        pytest.skip("set ZHIYAN_TEST_LANGMEM=1 (plus OPENAI_API_KEY) to include it")
+    from zhiyan.config import Settings
+    from zhiyan.memory.semantic.langmem_store import LangMemFactStore
 
     return LangMemFactStore(Settings(home=tmp_path))
 
@@ -226,23 +226,23 @@ def test_a_blank_optional_field_falls_back_to_its_default(monkeypatch):
     Found the first time a real key was saved through the web, which is the
     only way to hit it: a hand-edited .env just leaves the line out. A blank
     "Settle seconds" box made float("") raise on every Zep call, and a blank
-    "User id" would have silently scoped the graph to "" instead of "knowme" —
+    "User id" would have silently scoped the graph to "" instead of "zhiyan" —
     which is the worse half, because nothing would have errored.
     """
-    from knowme.memory.semantic.base import env_or
+    from zhiyan.memory.semantic.base import env_or
 
-    monkeypatch.setenv("KNOWME_TEST_BLANK", "")
-    assert env_or("KNOWME_TEST_BLANK", "fallback") == "fallback"
-    assert float(env_or("KNOWME_TEST_BLANK", "2.0")) == 2.0
+    monkeypatch.setenv("ZHIYAN_TEST_BLANK", "")
+    assert env_or("ZHIYAN_TEST_BLANK", "fallback") == "fallback"
+    assert float(env_or("ZHIYAN_TEST_BLANK", "2.0")) == 2.0
 
-    monkeypatch.setenv("KNOWME_TEST_BLANK", "   ")
-    assert env_or("KNOWME_TEST_BLANK", "fallback") == "fallback", "whitespace is blank too"
+    monkeypatch.setenv("ZHIYAN_TEST_BLANK", "   ")
+    assert env_or("ZHIYAN_TEST_BLANK", "fallback") == "fallback", "whitespace is blank too"
 
-    monkeypatch.setenv("KNOWME_TEST_BLANK", "real")
-    assert env_or("KNOWME_TEST_BLANK", "fallback") == "real"
+    monkeypatch.setenv("ZHIYAN_TEST_BLANK", "real")
+    assert env_or("ZHIYAN_TEST_BLANK", "fallback") == "real"
 
-    monkeypatch.delenv("KNOWME_TEST_BLANK")
-    assert env_or("KNOWME_TEST_BLANK", "fallback") == "fallback"
+    monkeypatch.delenv("ZHIYAN_TEST_BLANK")
+    assert env_or("ZHIYAN_TEST_BLANK", "fallback") == "fallback"
 
 
 def test_no_backend_reads_an_optional_setting_with_bare_os_getenv():
@@ -252,7 +252,7 @@ def test_no_backend_reads_an_optional_setting_with_bare_os_getenv():
     import re
     from pathlib import Path
 
-    semantic = Path(__file__).resolve().parents[2] / "knowme" / "memory" / "semantic"
+    semantic = Path(__file__).resolve().parents[2] / "zhiyan" / "memory" / "semantic"
     offenders = []
     for path in semantic.glob("*_store.py"):
         for num, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):

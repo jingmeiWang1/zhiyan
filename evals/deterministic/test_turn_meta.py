@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 
-from evals.helpers import ScriptedClient, make_knowme, response, text_block, tool_block
+from evals.helpers import ScriptedClient, make_zhiyan, response, text_block, tool_block
 
 
 def test_turn_meta_is_saved_with_gate_and_iterations(tmp_path):
@@ -17,7 +17,7 @@ def test_turn_meta_is_saved_with_gate_and_iterations(tmp_path):
         response([tool_block("save_note", {"subject": "alex", "content": "likes mornings"})], "tool_use"),
         response([text_block("Noted.")]),
     ]
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([gate] + turn))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([gate] + turn))
     app.respond("remember alex likes mornings")
 
     row = app.conn.execute(
@@ -54,10 +54,10 @@ def test_steps_are_bounded_and_use_known_kinds(tmp_path):
     frontend knows, every step has exactly the five keys the renderer reads,
     and no turn can outgrow the cap — the graph can fan out harder than the
     loop ever will (a plain loop turn tops out at ~2·max_iterations steps)."""
-    from knowme.core.runtime import MAX_STEPS, STEP_KINDS, record_step
+    from zhiyan.core.runtime import MAX_STEPS, STEP_KINDS, record_step
 
     gate = response([text_block('{"retrieve": false, "query": "", "reason": "math"}')])
-    app = make_knowme(tmp_path / "home",
+    app = make_zhiyan(tmp_path / "home",
                       client=ScriptedClient([gate, response([text_block("4")])]))
     app.respond("what is 2+2?")
     row = app.conn.execute(
@@ -89,7 +89,7 @@ def test_steps_are_bounded_and_use_known_kinds(tmp_path):
 
 def test_no_tool_turn_still_saves_meta(tmp_path):
     gate = response([text_block('{"retrieve": false, "query": "", "reason": "math"}')])
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([gate, response([text_block("4")])]))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([gate, response([text_block("4")])]))
     app.respond("what is 2+2?")
     row = app.conn.execute(
         "SELECT meta FROM chat_log WHERE role='assistant' ORDER BY id DESC LIMIT 1"
@@ -101,7 +101,7 @@ def test_no_tool_turn_still_saves_meta(tmp_path):
 
 def test_old_rows_without_meta_are_tolerated(tmp_path):
     """A row written before meta existed (NULL) must not break anything."""
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     app.memory.log_chat("hi", "hello", session_id="s1", source="cli", meta=None)
     row = app.conn.execute(
         "SELECT meta FROM chat_log WHERE role='assistant'"
@@ -116,20 +116,20 @@ def test_the_live_stream_ends_with_what_a_reload_will_render(tmp_path, monkeypat
     watch, the saved meta rebuilds it after a reload. Only the saved half was
     covered, and the live half is the one that broke.
 
-    `KnowMe.respond()` returns `runtime.run_turn(...).as_loop_result()`, and when
+    `Zhiyan.respond()` returns `runtime.run_turn(...).as_loop_result()`, and when
     as_loop_result() dropped meta, every dashboard turn died in chat_stream on
     `result.meta` with an AttributeError — while a reloaded thread (reading the
     meta out of SQLite) kept rendering perfectly. So it looked like a frontend
     bug in the ask panel and was in fact every single turn.
     """
-    from knowme.ops import web
+    from zhiyan.ops import web
 
     gate = response([text_block('{"retrieve": true, "query": "alex", "reason": "asks about alex"}')])
     turn = [
         response([tool_block("save_note", {"subject": "alex", "content": "likes mornings"})], "tool_use"),
         response([text_block("Noted.")]),
     ]
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([gate] + turn))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([gate] + turn))
     monkeypatch.setattr(web, "get_agent", lambda agent_id="default": app)
     # Nothing is published to the bridge in this test, and the bridge is a
     # process-wide singleton the other tests share.

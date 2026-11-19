@@ -34,9 +34,9 @@ from pathlib import Path
 
 import pytest
 
-from knowme.ops.web import data
+from zhiyan.ops.web import data
 
-JS = Path(__file__).resolve().parents[2] / "knowme" / "ops" / "static" / "js"
+JS = Path(__file__).resolve().parents[2] / "zhiyan" / "ops" / "static" / "js"
 MAIN_JS = JS / "main.js"
 DIAGRAM_JS = JS / "diagram.js"
 
@@ -51,7 +51,7 @@ def test_a_poll_with_nothing_new_does_not_read_the_trace_file(tmp_path, monkeypa
     trace = _today_trace(home)
     trace.parent.mkdir(parents=True)
     trace.write_text(json.dumps({"type": "turn_start"}) + "\n", encoding="utf-8")
-    monkeypatch.setenv("KNOWME_HOME", str(home))
+    monkeypatch.setenv("ZHIYAN_HOME", str(home))
     # Module state outlives the test; the cache must not be someone else's. Read
     # defensively so that removing the cache makes this fail on the assertion
     # below — the behaviour — instead of on an AttributeError up here.
@@ -96,7 +96,7 @@ def test_a_stale_cursor_resyncs_instead_of_replaying(tmp_path, monkeypatch):
     trace.parent.mkdir(parents=True)
     trace.write_text("\n".join(json.dumps({"type": "turn_start", "n": n}) for n in range(3))
                      + "\n", encoding="utf-8")
-    monkeypatch.setenv("KNOWME_HOME", str(home))
+    monkeypatch.setenv("ZHIYAN_HOME", str(home))
     getattr(data, "_TRACE_LINES", {}).clear()
 
     for cursor in (None, -1, 3, 99):

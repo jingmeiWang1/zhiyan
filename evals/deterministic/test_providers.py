@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import anthropic
 import pytest
-from knowme.loop.models import PROVIDERS, OpenAICompatClient, get_client
+from zhiyan.loop.models import PROVIDERS, OpenAICompatClient, get_client
 
-from knowme.config import Settings
+from zhiyan.config import Settings
 
 
 @pytest.fixture(autouse=True)
@@ -21,8 +21,8 @@ def fake_keys(monkeypatch):
     for provider in PROVIDERS.values():
         monkeypatch.setenv(provider.key_env, "fake-key-for-tests")
     # a stray custom-endpoint override must not leak into these checks
-    monkeypatch.delenv("KNOWME_API_KEY", raising=False)
-    monkeypatch.delenv("KNOWME_BASE_URL", raising=False)
+    monkeypatch.delenv("ZHIYAN_API_KEY", raising=False)
+    monkeypatch.delenv("ZHIYAN_BASE_URL", raising=False)
 
 
 @pytest.mark.parametrize("name", list(PROVIDERS))
@@ -54,7 +54,7 @@ def test_unknown_provider_names_the_choices():
 
 @pytest.mark.parametrize("name", list(PROVIDERS))
 def test_dashboard_pricing_covers_every_provider(name):
-    from knowme.ops.pricing import PRICING
+    from zhiyan.ops.pricing import PRICING
 
     assert name in PRICING
 
@@ -65,11 +65,11 @@ def test_dashboard_pricing_covers_every_provider(name):
 def test_model_listing_falls_back_without_a_catalog(name, monkeypatch):
     """Providers with no listable catalog still give the picker their defaults
     (and never make a network call to get them)."""
-    from knowme.ops import catalog
+    from zhiyan.ops import catalog
 
-    monkeypatch.setenv("KNOWME_PROVIDER", name)
-    monkeypatch.delenv("KNOWME_MODEL", raising=False)
-    monkeypatch.delenv("KNOWME_SMALL_MODEL", raising=False)
+    monkeypatch.setenv("ZHIYAN_PROVIDER", name)
+    monkeypatch.delenv("ZHIYAN_MODEL", raising=False)
+    monkeypatch.delenv("ZHIYAN_SMALL_MODEL", raising=False)
     result = catalog.list_models()
     assert result["listed"] is False
     ids = [m["id"] for m in result["models"]]
@@ -85,11 +85,11 @@ def test_bad_key_gives_a_fixable_error_not_a_codec_crash(monkeypatch):
     fixable message AND still offer the flagship so opus-4.8/fable-5 aren't lost.
     (Regression: a cloned repo whose ANTHROPIC_API_KEY had a '→' dropped the
     picker to two defaults with a 'latin-1 codec' error.)"""
-    from knowme.ops import catalog
+    from zhiyan.ops import catalog
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "anthropic")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "anthropic")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-" + "x" * 100 + "→bad")
-    monkeypatch.delenv("KNOWME_MODEL", raising=False)
+    monkeypatch.delenv("ZHIYAN_MODEL", raising=False)
     catalog._models_cache.clear()
     result = catalog.list_models("anthropic")
     assert result["listed"] is False
@@ -105,7 +105,7 @@ def test_catalog_url_is_used_with_both_auth_styles(monkeypatch):
     import json
     import urllib.request
 
-    from knowme.ops import catalog
+    from zhiyan.ops import catalog
 
     captured = {}
 
@@ -119,11 +119,11 @@ def test_catalog_url_is_used_with_both_auth_styles(monkeypatch):
         body.__exit__ = lambda *a: None
         return body
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "kimi")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "kimi")
     monkeypatch.setenv("MOONSHOT_API_KEY", "fake-key-for-tests")
     monkeypatch.delenv("MOONSHOT_BASE_URL", raising=False)
-    monkeypatch.delenv("KNOWME_BASE_URL", raising=False)
-    monkeypatch.delenv("KNOWME_MODEL", raising=False)
+    monkeypatch.delenv("ZHIYAN_BASE_URL", raising=False)
+    monkeypatch.delenv("ZHIYAN_MODEL", raising=False)
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     catalog._models_cache.clear()
 
@@ -140,7 +140,7 @@ def test_price_for_layers_model_over_provider():
     """Receipts correctness: a kimi-k3 run must be priced at K3's $3/$15, not
     the kimi provider's K2.7 rate — and unknown models still fall back to the
     provider estimate. (Live-catalog and :free paths are covered above.)"""
-    from knowme.ops.pricing import MODEL_PRICING, PRICING, price_for
+    from zhiyan.ops.pricing import MODEL_PRICING, PRICING, price_for
 
     assert price_for("kimi", "kimi-k3") == MODEL_PRICING["kimi-k3"] == (3.0, 15.0)
     assert price_for("kimi", "kimi-k2.7") == (0.95, 4.0)
@@ -166,7 +166,7 @@ def test_every_priced_model_has_a_knowledge_cutoff():
     means someone added a model without deciding, which is what this catches."""
     import re
 
-    from knowme.ops.pricing import MODEL_CUTOFF, MODEL_PRICING, cutoff_for
+    from zhiyan.ops.pricing import MODEL_CUTOFF, MODEL_PRICING, cutoff_for
 
     missing = set(MODEL_PRICING) - set(MODEL_CUTOFF)
     assert not missing, f"models priced but missing a MODEL_CUTOFF entry: {sorted(missing)}"
@@ -183,20 +183,20 @@ def test_every_priced_model_has_a_knowledge_cutoff():
 
 # --- a model name belongs to the provider it was configured for --------------
 # Found live: `.venv/bin/python examples/tiny_memory_agent.py` under
-# KNOWME_PROVIDER=xai printed "gate failed open (BadRequestError)". KNOWME_SMALL_MODEL
+# ZHIYAN_PROVIDER=xai printed "gate failed open (BadRequestError)". ZHIYAN_SMALL_MODEL
 # is global, so anthropic's gate model was sent to xAI, which 400s. The retrieval
 # gate fails open on error BY DESIGN, so this did not surface as a failure — it
 # surfaced as "retrieve", on every turn, for every non-anthropic model in the
 # arena. These pin the rule that stops it.
 
 def test_env_model_names_do_not_leak_into_another_provider(monkeypatch):
-    from knowme.loop.models import get_client
+    from zhiyan.loop.models import get_client
 
-    from knowme.config import Settings
+    from zhiyan.config import Settings
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "anthropic")
-    monkeypatch.setenv("KNOWME_MODEL", "claude-fable-5")
-    monkeypatch.setenv("KNOWME_SMALL_MODEL", "claude-haiku-4-5-20251001")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "anthropic")
+    monkeypatch.setenv("ZHIYAN_MODEL", "claude-fable-5")
+    monkeypatch.setenv("ZHIYAN_SMALL_MODEL", "claude-haiku-4-5-20251001")
     monkeypatch.setenv("XAI_API_KEY", "test-key")
 
     settings = Settings(provider="xai")
@@ -212,12 +212,12 @@ def test_env_model_names_do_not_leak_into_another_provider(monkeypatch):
 def test_an_explicit_model_survives_the_provider_switch(monkeypatch):
     """The rule drops INHERITED env values, not deliberate ones. Without this
     the fix would quietly override the arena's own model picker."""
-    from knowme.loop.models import get_client
+    from zhiyan.loop.models import get_client
 
-    from knowme.config import Settings
+    from zhiyan.config import Settings
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "anthropic")
-    monkeypatch.setenv("KNOWME_MODEL", "claude-fable-5")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "anthropic")
+    monkeypatch.setenv("ZHIYAN_MODEL", "claude-fable-5")
     monkeypatch.setenv("XAI_API_KEY", "test-key")
 
     settings = Settings(provider="xai", model="grok-4.3")
@@ -227,15 +227,15 @@ def test_an_explicit_model_survives_the_provider_switch(monkeypatch):
 
 
 def test_the_env_still_wins_for_its_own_provider(monkeypatch):
-    """The whole point of KNOWME_MODEL is to override the default — the fix must
+    """The whole point of ZHIYAN_MODEL is to override the default — the fix must
     not break the ordinary single-provider case."""
-    from knowme.loop.models import get_client
+    from zhiyan.loop.models import get_client
 
-    from knowme.config import Settings
+    from zhiyan.config import Settings
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "anthropic")
-    monkeypatch.setenv("KNOWME_MODEL", "claude-fable-5")
-    monkeypatch.setenv("KNOWME_SMALL_MODEL", "claude-haiku-4-5-20251001")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "anthropic")
+    monkeypatch.setenv("ZHIYAN_MODEL", "claude-fable-5")
+    monkeypatch.setenv("ZHIYAN_SMALL_MODEL", "claude-haiku-4-5-20251001")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
     settings = Settings(provider="anthropic")
@@ -253,19 +253,19 @@ def test_the_env_still_wins_for_its_own_deepseek_provider(monkeypatch):
     OVERWROTE deepseek's own claim to it (the owner dict comprehension keeps the
     last writer, not the true owner). `_belongs_elsewhere("deepseek-flash",
     "deepseek")` then answered True for deepseek's OWN model, so get_client
-    dropped the user's KNOWME_MODEL and fell back to the provider default.
+    dropped the user's ZHIYAN_MODEL and fell back to the provider default.
 
     Silent by construction: the override in .env simply had no effect, and every
     cost number afterwards priced a model that wasn't running. Found 2026-09-19
-    on a `KNOWME_PROVIDER=deepseek` + `KNOWME_MODEL=deepseek-flash` .env.
+    on a `ZHIYAN_PROVIDER=deepseek` + `ZHIYAN_MODEL=deepseek-flash` .env.
     """
-    from knowme.loop.models import get_client
+    from zhiyan.loop.models import get_client
 
-    from knowme.config import Settings
+    from zhiyan.config import Settings
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "deepseek")
-    monkeypatch.setenv("KNOWME_MODEL", "deepseek-flash")
-    monkeypatch.setenv("KNOWME_SMALL_MODEL", "deepseek-flash")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "deepseek")
+    monkeypatch.setenv("ZHIYAN_MODEL", "deepseek-flash")
+    monkeypatch.setenv("ZHIYAN_SMALL_MODEL", "deepseek-flash")
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
 
     settings = Settings(provider="deepseek")
@@ -282,12 +282,12 @@ def test_an_aggregator_may_still_use_the_family_it_resells(monkeypatch):
     """The other half of the same rule. Guarding against the naive fix — simply
     dropping aggregators from the owner map — which would turn around and drop
     opencode's own default model, a deepseek id."""
-    from knowme.loop.models import get_client
+    from zhiyan.loop.models import get_client
 
-    from knowme.config import Settings
+    from zhiyan.config import Settings
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "opencode_go")
-    monkeypatch.setenv("KNOWME_MODEL", "deepseek-v4-flash")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "opencode_go")
+    monkeypatch.setenv("ZHIYAN_MODEL", "deepseek-v4-flash")
     monkeypatch.setenv("OPENCODE_GO_API_KEY", "test-key")
 
     settings = Settings(provider="opencode_go")
@@ -299,12 +299,12 @@ def test_an_aggregator_may_still_use_the_family_it_resells(monkeypatch):
 def test_a_foreign_model_is_still_dropped_for_an_aggregator(monkeypatch):
     """And the short-circuit opens no hole: opencode resells deepseek ids, not
     anthropic ones, so the leak this rule exists to stop must still be stopped."""
-    from knowme.loop.models import get_client
+    from zhiyan.loop.models import get_client
 
-    from knowme.config import Settings
+    from zhiyan.config import Settings
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "opencode_go")
-    monkeypatch.setenv("KNOWME_SMALL_MODEL", "claude-haiku-4-5-20251001")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "opencode_go")
+    monkeypatch.setenv("ZHIYAN_SMALL_MODEL", "claude-haiku-4-5-20251001")
     monkeypatch.setenv("OPENCODE_GO_API_KEY", "test-key")
 
     settings = Settings(provider="opencode_go")
@@ -314,16 +314,16 @@ def test_a_foreign_model_is_still_dropped_for_an_aggregator(monkeypatch):
 
 
 def test_a_foreign_gate_model_is_dropped_even_when_the_env_names_the_provider(monkeypatch):
-    """The case that was actually live in Sean's .env: KNOWME_PROVIDER=xai with
-    KNOWME_SMALL_MODEL still holding anthropic's gate model. Scoping by "did the
+    """The case that was actually live in Sean's .env: ZHIYAN_PROVIDER=xai with
+    ZHIYAN_SMALL_MODEL still holding anthropic's gate model. Scoping by "did the
     caller switch provider" missed this one — the env agreed with itself and was
     still wrong."""
-    from knowme.loop.models import get_client
+    from zhiyan.loop.models import get_client
 
-    from knowme.config import Settings
+    from zhiyan.config import Settings
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "xai")
-    monkeypatch.setenv("KNOWME_SMALL_MODEL", "claude-haiku-4-5-20251001")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "xai")
+    monkeypatch.setenv("ZHIYAN_SMALL_MODEL", "claude-haiku-4-5-20251001")
     monkeypatch.setenv("XAI_API_KEY", "test-key")
 
     settings = Settings(provider="xai")
@@ -336,12 +336,12 @@ def test_an_unfamiliar_model_name_is_left_alone(monkeypatch):
     """The check asks "is this positively someone else's?", not "does it look
     like ours?". The second question would silently downgrade any id we don't
     recognise — a preview name, a model released after this code was written."""
-    from knowme.loop.models import get_client
+    from zhiyan.loop.models import get_client
 
-    from knowme.config import Settings
+    from zhiyan.config import Settings
 
-    monkeypatch.setenv("KNOWME_PROVIDER", "kimi")
-    monkeypatch.setenv("KNOWME_SMALL_MODEL", "moonshot-v1-8k")
+    monkeypatch.setenv("ZHIYAN_PROVIDER", "kimi")
+    monkeypatch.setenv("ZHIYAN_SMALL_MODEL", "moonshot-v1-8k")
     monkeypatch.setenv("MOONSHOT_API_KEY", "test-key")
 
     settings = Settings(provider="kimi")

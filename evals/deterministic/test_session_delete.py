@@ -14,18 +14,18 @@ from __future__ import annotations
 
 import pytest
 
-from evals.helpers import ScriptedClient, make_knowme, response, text_block
-from knowme.core.context import snip_compact
-from knowme.ops.web import data as web_data
+from evals.helpers import ScriptedClient, make_zhiyan, response, text_block
+from zhiyan.core.context import snip_compact
+from zhiyan.ops.web import data as web_data
 
 
 @pytest.fixture(autouse=True)
 def _isolated_home(tmp_path, monkeypatch):
     """session_action/library_action open their OWN connection from
-    load_settings(), not the one make_knowme built — so without this the web
-    layer would reach into the maintainer's real .knowme and rename or delete
-    documents there. Same value make_knowme gets, so both see one home."""
-    monkeypatch.setenv("KNOWME_HOME", str(tmp_path / "home"))
+    load_settings(), not the one make_zhiyan built — so without this the web
+    layer would reach into the maintainer's real .zhiyan and rename or delete
+    documents there. Same value make_zhiyan gets, so both see one home."""
+    monkeypatch.setenv("ZHIYAN_HOME", str(tmp_path / "home"))
 
 
 def _seed_messages(app, session_id, text="hi", agent_id="default"):
@@ -54,20 +54,20 @@ def _seed_archives(app, home, session_id):
 
 
 def _point_at(app, monkeypatch):
-    from knowme.ops import web
+    from zhiyan.ops import web
     monkeypatch.setattr(web_data, "get_agent", lambda agent_id="default": app)
     monkeypatch.setattr(web, "get_agent", lambda agent_id="default": app)
     return web
 
 
 def test_deleting_a_thread_removes_everything_it_lives_in(tmp_path, monkeypatch):
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     monkeypatch.setattr(web_data, "get_agent", lambda agent_id="default": app)
     victim, keeper = "dashboard-old", app.session.session_id
     _seed_messages(app, victim, "删掉这段")
     _seed_messages(app, keeper, "留着这段")
     plain, dated = _seed_archives(app, tmp_path / "home", victim)
-    from knowme.ops import web
+    from zhiyan.ops import web
     web.application_contexts.publish(
         agent_id=app.agent_id, session_id=victim, application="reader",
         resource="old.md", content="一份已经删掉的文档", selection="")
@@ -97,7 +97,7 @@ def test_deleting_the_thread_you_are_in_moves_you_to_a_fresh_one(tmp_path, monke
     shows — or, if the id is reseated by `switch`, to an EMPTY thread still
     labelled with the dead id."""
     gate = response([text_block('{"retrieve": false, "reason": "换个话题了"}')])
-    app = make_knowme(tmp_path / "home",
+    app = make_zhiyan(tmp_path / "home",
                       client=ScriptedClient([gate, response([text_block("好的")])]))
     web = _point_at(app, monkeypatch)
     old = app.session.session_id
@@ -123,7 +123,7 @@ def test_deleting_the_thread_you_are_in_moves_you_to_a_fresh_one(tmp_path, monke
 def test_deleting_some_other_thread_leaves_this_one_alone(tmp_path, monkeypatch):
     """History is a list of conversations you can delete from; deleting one you
     are not in must not move you off the one you are."""
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     web = _point_at(app, monkeypatch)
     current, other = app.session.session_id, "dashboard-old"
     _seed_messages(app, other, "旧的那条")
@@ -148,10 +148,10 @@ def test_deleting_a_document_deletes_its_own_conversation(tmp_path, monkeypatch)
     """One document, one conversation (browser_agent.DOC_PREFIX) — so deleting
     the document has to take that conversation with it, or a deleted document's
     chat stays in History and its rows stay in chat_log forever."""
-    from knowme.applications.library import parse_and_save
-    from knowme.ops import web
+    from zhiyan.applications.library import parse_and_save
+    from zhiyan.ops import web
 
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     monkeypatch.setattr(web, "get_agent", lambda agent_id="default": app)
     home = tmp_path / "home"
     doc = parse_and_save(app.conn, home, name="paper.md", raw=b"# REACT\n\ntext\n",
@@ -179,9 +179,9 @@ def test_deleting_a_document_deletes_its_own_conversation(tmp_path, monkeypatch)
 def test_renaming_a_document_changes_only_its_name(tmp_path, monkeypatch):
     """Only the name in the library moves: the id, the stored file and the text
     are the document, and the title is just what we call it here."""
-    from knowme.applications.library import file_path, get_document, parse_and_save
+    from zhiyan.applications.library import file_path, get_document, parse_and_save
 
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     home = tmp_path / "home"
     doc = parse_and_save(app.conn, home, name="paper.md", raw=b"# REACT\n\ntext\n",
                          content_type="text/markdown", source="paper.md",
@@ -200,9 +200,9 @@ def test_renaming_a_document_changes_only_its_name(tmp_path, monkeypatch):
 
 
 def test_rename_refuses_an_empty_name_and_an_unknown_document(tmp_path, monkeypatch):
-    from knowme.applications.library import MAX_TITLE, get_document, parse_and_save
+    from zhiyan.applications.library import MAX_TITLE, get_document, parse_and_save
 
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([]))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([]))
     doc = parse_and_save(app.conn, tmp_path / "home", name="paper.md",
                          raw=b"# REACT\n", content_type="text/markdown",
                          source="paper.md", added_by="default")

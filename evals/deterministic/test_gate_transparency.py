@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 
-from evals.helpers import ScriptedClient, make_knowme, response, text_block, tool_block
+from evals.helpers import ScriptedClient, make_zhiyan, response, text_block, tool_block
 
 # ---- 单元级别：直接驱动 gated_retrieve，不需要跑一整轮 ---------------------
 
@@ -31,8 +31,8 @@ def _gate_reply(retrieve: bool, query: str, reason: str = "提到了以前的事
 
 
 def _memory_with(client, tmp_path, facts=(), episodes=()):
-    """一个装好记忆的 Memory —— 用 KnowMe 建，因为建库/建表那些事它已经做了。"""
-    app = make_knowme(tmp_path / "home", client=client)
+    """一个装好记忆的 Memory —— 用 知研 建，因为建库/建表那些事它已经做了。"""
+    app = make_zhiyan(tmp_path / "home", client=client)
     for subject, content in facts:
         app.memory.facts.add(subject, content)
     for summary in episodes:
@@ -98,7 +98,7 @@ def test_a_skip_reports_no_hits_and_goes_out_the_moment_it_is_decided(tmp_path):
 def test_an_event_without_a_query_renders_exactly_as_it_used_to():
     """锁死「旧记录不变形」：上线之前写下的那些事件没有 query/hits，走的就是
     今天这两句 —— 一个字节都不差。"""
-    from knowme.core.runtime import gate_detail, gate_label
+    from zhiyan.core.runtime import gate_detail, gate_label
 
     old = {"decision": "retrieve", "reason": "问的是 alex"}
     assert gate_label(old) == "要查记忆"
@@ -115,7 +115,7 @@ def test_the_worst_case_detail_still_fits_in_one_step():
 
     「还有 N 条没显示」那行是唯一允许消失的东西，所以最坏情况要连它一起算进去。
     """
-    from knowme.core.runtime import (
+    from zhiyan.core.runtime import (
         _GATE_CLIP,
         _GATE_MAX_HITS,
         _STEP_DETAIL_MAX,
@@ -141,7 +141,7 @@ def test_the_worst_case_detail_still_fits_in_one_step():
 
 
 def test_a_real_turn_stores_the_query_and_the_hits_in_meta(tmp_path):
-    from knowme.core.runtime import gate_detail
+    from zhiyan.core.runtime import gate_detail
 
     gate = _gate_reply(True, "alex", "问的是 alex")
     turn = [
@@ -149,7 +149,7 @@ def test_a_real_turn_stores_the_query_and_the_hits_in_meta(tmp_path):
                  "tool_use"),
         response([text_block("Noted.")]),
     ]
-    app = make_knowme(tmp_path / "home", client=ScriptedClient([gate] + turn))
+    app = make_zhiyan(tmp_path / "home", client=ScriptedClient([gate] + turn))
     app.memory.facts.add("alex", "alex 喜欢早起")
 
     app.respond("alex 什么时候有空")

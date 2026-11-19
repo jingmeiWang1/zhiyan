@@ -8,11 +8,11 @@ unaffordable (the whole thing in context every turn).
 
 import re
 
-from knowme.applications.library import list_documents, save_document
-from knowme.applications.reader import ReaderError
-from knowme.db import connect
-from knowme.tools import documents
-from knowme.tools.documents import make_document_tools
+from zhiyan.applications.library import list_documents, save_document
+from zhiyan.applications.reader import ReaderError
+from zhiyan.db import connect
+from zhiyan.tools import documents
+from zhiyan.tools.documents import make_document_tools
 
 
 def _tools(tmp_path, budget=200):

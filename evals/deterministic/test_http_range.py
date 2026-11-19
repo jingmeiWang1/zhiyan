@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from knowme.ops.web.http_range import RangeError, parse_range
+from zhiyan.ops.web.http_range import RangeError, parse_range
 
 SIZE = 1000
 
