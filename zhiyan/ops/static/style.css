@@ -1,77 +1,89 @@
 /* ===========================================================================
-   主题：Atelier — 纸、墨、玉，与一道黄铜线
+   主题：Garden — 薄荷、天蓝与奶油白
    ---------------------------------------------------------------------------
-   底色是温润的纸（不是纯白），面板是更亮的一层纸，凹槽是压下去的一层。
-   分区靠 1px 细线，**不靠投影**；投影只留给真正盖住页面的东西（弹窗、下拉）。
-   侧栏是一列暖石色的书脊：亮色下比页面深半档，暗色下比页面亮半档 ——
-   它始终是"旁边的一条"，而不是压下来的深色块。
+   底色是一层带薄荷气息的白，面板是纯白，凹槽是浅浅的薄荷绿。
+   分区靠 1px 淡线，卡片靠一层很轻的投影浮起来 —— 不是仪表盘那种"嵌在板里"，
+   而是 "几张纸放在桌上" 的轻。侧栏是一列薄荷白，顶部品牌区是一条
+   薄荷 → 天蓝的柔和渐变，没有深色块。
 
-   四个语义色仍然分工明确、互不相近：
-     --accent 深玉 = 可交互的（按钮、链接、选中、当前）
-     --good   苔绿 = 正常
-     --warn   赭石 = 要注意（待配置、陈旧、部分完成）—— 不是故障
-     --bad    朱砂 = 出事了
-   --gold 只做装饰：一条细线、品牌框、侧栏的当前标记。它不做文字色，
-   也不和 --accent 抢"可点击"这件事。
+   语义色仍然分工明确：
+     --accent 深薄荷 = 可交互的（按钮、链接、选中、当前）
+     --good   草绿   = 正常
+     --warn   杏黄   = 要注意（待配置、陈旧、部分完成）—— 不是故障
+     --bad    珊瑚   = 出事了
+   --peach / --sky / --mint 只做装饰：品牌渐变、小节标记、柔和的强调。
 
    两种模式**只声明一次**：每个值是 light-dark(亮, 暗)，由 :root 上的
    color-scheme 决定用哪个。手动切换只改 color-scheme 一个属性。
 
-   字体分三路，各司其职：
-     --serif  只给标题、品牌、大数字。宋体的横细竖粗在 26px 以上才立得住。
-     --sans   正文与控件。中文落到系统里最稳的那一款黑体。
-     --mono   只给机器产出的东西 —— 数字、模型名、耗时、ID。
+   字体：标题也改用圆润的无衬线（--serif 指向同一套 sans 栈），
+   大数字、按钮、正文都是同一族，整体更轻、更软。
+   --mono 只给机器产出的东西 —— 数字、模型名、耗时、ID。
    =========================================================================== */
 :root{
     /* 亮色是默认。原生控件（滚动条、下拉）跟着这个走。 */
     color-scheme:light;
 
-    --bg:light-dark(#f3f1ea,#121618);      /* 纸 */
-    --panel:light-dark(#fcfbf7,#191f22);   /* 更亮的一层纸 */
-    --card:light-dark(#eae7df,#20272b);    /* 凹槽：输入框、代码块、工具结果 */
+    --bg:light-dark(#f3faf6,#0f1a16);      /* 薄荷白 */
+    --panel:light-dark(#ffffff,#15231d);   /* 纯白面板 */
+    --card:light-dark(#eaf5f0,#1b2c25);    /* 凹槽：输入框、代码块、工具结果 */
 
-    --line:light-dark(#ddd8cb,#2c3439);    /* 细线 */
-    --line2:light-dark(#c3bdaf,#3f4a50);   /* 重一档：表头线、控件描边 */
+    --line:light-dark(#d9ece4,#263a31);    /* 淡线 */
+    --line2:light-dark(#bfddd1,#395447);   /* 重一档：表头线、控件描边 */
 
-    --ink:light-dark(#1d211f,#e7e7e1);
-    --ink2:light-dark(#59605b,#adb5b6);
+    --ink:light-dark(#25423a,#e6f2ec);
+    --ink2:light-dark(#557265,#a7c1b6);
     /* --ink3 是 11.5px 的说明文字：在 --bg 与 --panel 上都要过 AA。 */
-    --ink3:light-dark(#626960,#8e9799);
+    --ink3:light-dark(#586f64,#7f9a8e);
 
-    --accent:light-dark(#2b5a6b,#85afc2);     /* 石青：可交互的 */
-    --accent-soft:light-dark(#e3ebee,#1c2b32);
-    --on-accent:light-dark(#ffffff,#0b171c);  /* 压在 --accent 上的字 */
-    --gold:light-dark(#a4844f,#c0a273);       /* 只做装饰 */
-    --good:light-dark(#2f6b46,#63b57e);--good-soft:light-dark(#e6f0e7,#16251a);
-    --warn:light-dark(#8a6321,#d8ab5c);--warn-soft:light-dark(#f6eedc,#2e2513);
-    --bad:light-dark(#963b33,#e07f70);--bad-soft:light-dark(#f7e9e6,#2b1815);
+    --accent:light-dark(#2b735b,#82d6b6);     /* 深薄荷：可交互的 */
+    --accent-soft:light-dark(#dff2ea,#1b352c);
+    --on-accent:light-dark(#ffffff,#0a1a13);  /* 压在 --accent 上的字 */
+    --peach:light-dark(#e9a08c,#e7a78f);      /* 装饰：杏桃 */
+    --sky:light-dark(#8ac6e6,#8ec9e8);        /* 装饰：天蓝 */
+    --mint:light-dark(#74cba9,#7fd3b4);       /* 装饰：薄荷 */
+    --gold:var(--peach);                      /* 兼容旧规则名 */
+    --good:light-dark(#3e8c60,#63b57e);--good-soft:light-dark(#e4f3e9,#16251a);
+    --warn:light-dark(#a9752c,#d8ab5c);--warn-soft:light-dark(#f9f0df,#2e2513);
+    --bad:light-dark(#c05b5b,#e07f70);--bad-soft:light-dark(#fbeaea,#2b1815);
 
-    /* 侧栏：亮色下是暖石色的一列，暗色下比页面**亮**一档 —— 它不再是一块
-       压下来的深色，而是页面旁边的一条浅色书脊。 */
-    --nav-bg:light-dark(#e9e5db,#1b2227);
-    --nav-ink:light-dark(#232722,#e2e5e1);
-    --nav-ink2:light-dark(#5f665e,#a3acad);
-    --nav-line:light-dark(rgba(35,39,34,.12),rgba(255,255,255,.10));
-    --nav-hover:light-dark(rgba(255,255,255,.62),rgba(255,255,255,.06));
-    --nav-field:light-dark(rgba(255,255,255,.55),rgba(255,255,255,.04));
-    --nav-active:light-dark(#2b5a6b,#85afc2);
+    /* 页面背景的两团柔光：左上薄荷、右上天空蓝，都很淡。 */
+    --wash-mint:light-dark(rgba(116,203,169,.20),rgba(127,211,180,.06));
+    --wash-sky:light-dark(rgba(138,198,230,.18),rgba(142,201,232,.05));
 
-    /* 品牌抬头：和导航同一个石色，只深半档。它靠明度差和字体本身被认出来，
-       不靠换一种颜色，所以上下不会突兀。 */
-    --mast-bg:light-dark(#ded9cc,#171e22);
-    --mast-ink2:light-dark(#575e56,#a3acad);
-    --mast-line:light-dark(rgba(35,39,34,.14),rgba(255,255,255,.08));
+    /* 侧栏：一列薄荷白。当前项是一枚白色药丸，不用边条。 */
+    --nav-bg:light-dark(#e9f6f0,#13221b);
+    --nav-ink:light-dark(#2a473e,#dcede5);
+    --nav-ink2:light-dark(#557165,#9ab4a8);
+    --nav-line:light-dark(rgba(42,71,62,.10),rgba(255,255,255,.09));
+    --nav-hover:light-dark(#ffffff,#1a2d24);
+    --nav-field:light-dark(#ffffff,#1a2d24);
+    --nav-active:light-dark(#2b735b,#82d6b6);
+    --nav-active-bg:light-dark(#ffffff,#1d352b);
 
-    --lift:none;          /* 面板嵌在纸上，不浮起来 */
-    --lift-2:0 18px 48px light-dark(rgba(18,30,24,.20),rgba(0,0,0,.60));
-    --radius:6px;         /* 控件 */
-    --radius-card:12px;   /* 面板、卡片。比控件大一级，层次才分得开 */
+    /* 品牌抬头：薄荷 → 天蓝的淡渐变，和导航同一明度区间。 */
+    --mast-a:light-dark(#eaf8f1,#14251d);
+    --mast-b:light-dark(#e3f2f7,#102022);
+    --mast-ink2:light-dark(#4f6a5f,#9ab4a8);
+    --mast-line:light-dark(rgba(42,71,62,.10),rgba(255,255,255,.08));
+    --brand-a:light-dark(#74cba9,#2f6b58);
+    --brand-b:light-dark(#8ac6e6,#3a7898);
+    --brand-ink:light-dark(#1d3a31,#ffffff);
 
-    /* 正文。中文落到系统里最稳的黑体。 */
-    --sans:"Microsoft YaHei","微软雅黑","PingFang SC","Noto Sans CJK SC",system-ui,-apple-system,sans-serif;
-    /* 标题。宋书在 26px 以上出笔锋，小字仍然交给 --sans。 */
-    --serif:"Songti SC","STSong","STZhongsong","华文中宋","Source Han Serif SC",
-            "Source Han Serif CN","Noto Serif CJK SC","SimSun",Georgia,serif;
+    --lift:none;
+    /* 轻投影：卡片像纸片，不像浮窗。 */
+    --shadow-soft:0 1px 2px light-dark(rgba(37,66,58,.04),rgba(0,0,0,.28)),
+                  0 18px 38px -32px light-dark(rgba(37,66,58,.34),rgba(0,0,0,.65));
+    --lift-2:0 22px 60px light-dark(rgba(37,66,58,.20),rgba(0,0,0,.62));
+    --radius:10px;        /* 控件 */
+    --radius-card:18px;   /* 面板、卡片 */
+    --radius-pill:999px;  /* 按钮、当前项 */
+
+    /* 正文。中文落到系统里最稳的一款圆润黑体。 */
+    --sans:"MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei UI",
+           "Microsoft YaHei","Noto Sans CJK SC",system-ui,-apple-system,sans-serif;
+    /* 标题与大数字也用同一套无衬线：这一版没有宋体。 */
+    --serif:var(--sans);
     /* 机器产出。Consolas 排在 Courier New 前面是为可读性让路。 */
     --mono:"Cascadia Mono","JetBrains Mono",Consolas,'Courier New',Courier,monospace;
   }
@@ -95,12 +107,14 @@
      It used to be three, with a chat dock pinned on the right — that column ate
      380px of every page, including the ones that need width most (a document, a
      file). A conversation is a route now, so it gets the whole pane. */
-  body{background:var(--bg);color:var(--ink);
-       font:14px/1.75 var(--sans);
+  body{background:radial-gradient(900px 520px at 10% -10%,var(--wash-mint),transparent 62%),
+                    radial-gradient(820px 500px at 92% -6%,var(--wash-sky),transparent 58%),
+                    var(--bg);
+       color:var(--ink);font:14px/1.75 var(--sans);
        display:flex;height:100vh;overflow:hidden;
        -webkit-font-smoothing:antialiased}
-  /* 侧栏是暖石色的一条书脊，和内容页只差半档明度。最上面那条深色抬头
-     （.brand-block）是整页唯一的"重"块 —— 项目名从那里被读出来。 */
+  /* 侧栏是一列薄荷白。最上面的 .brand-block 是一条更淡的薄荷 → 天蓝
+     渐变，项目名从那里被读出来，但整列始终是轻的。 */
   nav{width:var(--nav-w,224px);flex-shrink:0;background:var(--nav-bg);
       border-right:1px solid var(--nav-line);padding:24px 14px;
       height:100vh;overflow-y:auto;scrollbar-color:var(--nav-line) transparent}
@@ -113,17 +127,19 @@
      挤在一行，模型名和按钮互相顶。现在拆成三层：字标行（logo + 名称 +
      动作）、模型 chip、下面的分组。动作按钮统一成 22px 的方钮，和侧栏
      其他控件一样用 1px 描边 —— 仪表盘语言里，能点的东西都有边。 */
-  /* 品牌抬头：和导航同一个石色，只深半档，下面一条同色系细线收口。
-     项目名靠宋体、字号和字距被读出来，不靠换底色，所以上下过渡是平的。 */
+  /* 品牌抬头：薄荷 → 天蓝的淡渐变，和导航同一明度区间，上下一体。 */
   .brand-block{margin:-24px -14px 12px;padding:26px 20px 20px;
-    background:var(--mast-bg);border-bottom:1px solid var(--mast-line)}
+    background:linear-gradient(158deg,var(--mast-a),var(--mast-b));
+    border-bottom:1px solid var(--mast-line)}
   .brand{display:flex;align-items:center;gap:12px;min-width:0}
-  .brand-mark{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;
-    border:1px solid var(--gold);border-radius:8px;background:transparent;
-    color:var(--nav-ink);font-family:var(--serif);font-size:20px;font-weight:400;line-height:1}
+  .brand-mark{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;
+    border:0;border-radius:13px;
+    background:linear-gradient(135deg,var(--brand-a),var(--brand-b));
+    color:var(--brand-ink);font-family:var(--sans);font-size:20px;font-weight:600;line-height:1;
+    box-shadow:0 8px 18px -12px var(--brand-a)}
   .brand-copy{min-width:0;flex:1}
-  .brand-name{font-family:var(--serif);font-size:23px;font-weight:400;line-height:1.2;
-    letter-spacing:.22em;color:var(--nav-ink);white-space:nowrap}
+  .brand-name{font-family:var(--sans);font-size:23px;font-weight:600;line-height:1.2;
+    letter-spacing:.14em;color:var(--nav-ink);white-space:nowrap}
   .brand-tag{font-size:9px;line-height:1.4;letter-spacing:.16em;
     color:var(--mast-ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
   .brand-actions{display:flex;align-items:center;gap:4px;flex:0 0 auto}
@@ -136,7 +152,7 @@
     padding:7px 9px;border:1px solid var(--nav-line);border-radius:var(--radius);
     background:var(--nav-field);color:var(--nav-ink2);font:inherit;text-align:left;cursor:pointer;
     min-width:0;transition:border-color .15s,color .15s}
-  .brand-model:hover{border-color:var(--gold);background:var(--nav-hover);color:var(--nav-ink)}
+  .brand-model:hover{border-color:var(--accent);background:var(--nav-hover);color:var(--nav-ink)}
   .brand-model-dot{width:5px;height:5px;flex:0 0 5px;border-radius:50%;background:var(--accent);
     box-shadow:0 0 0 3px var(--accent-soft)}
   .brand-model small{flex:1;min-width:0;font-family:var(--mono);font-size:10.5px;
@@ -151,20 +167,19 @@
      links used to share the same 10px left edge, so the sidebar looked like one
      flat list with two captions randomly inserted into it. */
   nav a{display:flex;justify-content:space-between;align-items:center;color:var(--nav-ink2);
-        text-decoration:none;padding:7px 10px 7px 20px;border-radius:var(--radius);font-size:13.5px;
-        margin-top:2px;transition:background .14s,color .14s}
+        text-decoration:none;padding:8px 14px 8px 18px;border-radius:var(--radius-pill);
+        font-size:13.5px;margin-top:2px;transition:background .14s,color .14s,box-shadow .14s}
   nav a:hover{background:var(--nav-hover);color:var(--nav-ink)}
-  /* 选中项：一道黄铜细条 + 一点抬高。侧栏是深色，整块高亮会糊成一片，
-     所以位置交给左边那条线来报。 */
-  nav a.on{background:var(--nav-hover);color:var(--nav-active);font-weight:600;
-           box-shadow:inset 2px 0 0 var(--gold)}
+  /* 选中项是一枚白色药丸：轻、圆、没有边条。 */
+  nav a.on{background:var(--nav-active-bg);color:var(--nav-active);font-weight:600;
+           box-shadow:0 1px 2px rgba(37,66,58,.06)}
   .agent-link{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;
-    color:var(--nav-ink2);padding:8px 10px 8px 14px;border-radius:var(--radius);
+    color:var(--nav-ink2);padding:8px 14px;border-radius:var(--radius-pill);
     font-family:inherit;font-size:13.5px;line-height:1.4;
-    text-align:left;cursor:pointer;margin-top:2px;transition:background .14s,color .14s}
+    text-align:left;cursor:pointer;margin-top:2px;transition:background .14s,color .14s,box-shadow .14s}
   .agent-link:hover{background:var(--nav-hover);color:var(--nav-ink)}
-  .agent-link.on{background:var(--nav-hover);color:var(--nav-active);font-weight:600;
-                 box-shadow:inset 2px 0 0 var(--gold)}
+  .agent-link.on{background:var(--nav-active-bg);color:var(--nav-active);font-weight:600;
+                 box-shadow:0 1px 2px rgba(37,66,58,.06)}
   .agent-link .agent-icon{width:20px;text-align:center;color:var(--nav-ink2);font-size:15px}
   .agent-link.on .agent-icon{color:var(--nav-active)}
   .agent-link i{margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--nav-ink2);opacity:.4}
@@ -202,22 +217,22 @@
   .scrolly th.dbcol small{color:var(--ink3);font-weight:400;margin-left:5px}
   /* 页头是一份文件的抬头，不是应用标题栏：字号大、字距收紧、下压一条线
      （线在 .pagehead 上）。宋体的横细竖粗在 20px 上才出得来。 */
-  h1{font-family:var(--serif);font-size:31px;font-weight:400;letter-spacing:.04em;
+  h1{font-family:var(--sans);font-size:30px;font-weight:600;letter-spacing:.02em;
      line-height:1.3;margin-bottom:5px}
   .sub{color:var(--ink2);font-size:12.5px;letter-spacing:.02em}
-  /* 小节标题是**标签**，不是标题：打字机、大写、拉开字距，前面加一个小方灯
-     —— 和 .pill 的圆点同一套语言：一小块颜色先说"这一节是什么"。
-     那个方块用 inline-block 而不是 flex 布局：全站二十多处 h2 里带着一段
-     <span class="meta"> 说明文字，h2 一旦变成 flex 容器，说明文字会各自
-     成为 flex item 被挤成窄条换行。inline-block 不动布局模式，长短都吃得下。 */
-  h2{font-size:17px;letter-spacing:.03em;color:var(--ink);
-     font-family:var(--serif);font-weight:600;margin:36px 0 14px}
-  h2::before{content:"";display:inline-block;width:22px;height:1px;
-             background:var(--gold);margin-right:12px;vertical-align:4px}
+  /* 小节标题前面是一枚薄荷 → 天蓝的小药丸，比一条线更轻。
+     inline-block 是为了不动 h2 的布局模式：全站 h2 里常带一段
+     <span class="meta"> 说明文字，变成 flex 容器会把说明挤成窄条。 */
+  h2{font-size:18px;letter-spacing:.02em;color:var(--ink);
+     font-family:var(--sans);font-weight:600;margin:34px 0 14px}
+  h2::before{content:"";display:inline-block;width:16px;height:6px;border-radius:99px;
+             background:linear-gradient(90deg,var(--mint),var(--sky));
+             margin-right:10px;vertical-align:2px}
   .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:12px}
-  .tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-card);padding:18px 20px}
-  /* 数字是机器写的，走等宽 + 等宽数字：位数对得齐，扫一眼能比大小。 */
-  .tile b{font-family:var(--serif);font-size:30px;font-weight:400;letter-spacing:.01em;
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-card);
+        padding:18px 20px;box-shadow:var(--shadow-soft)}
+  /* 数字是机器写的，等宽数字保证位数对齐。 */
+  .tile b{font-family:var(--sans);font-size:30px;font-weight:600;letter-spacing:.01em;
           font-variant-numeric:tabular-nums;display:block;line-height:1.2}
   .tile span{color:var(--ink2);font-size:11.5px;letter-spacing:.02em}
   .map{display:flex;flex-direction:column;gap:10px;margin-top:6px}
@@ -234,7 +249,7 @@
      那条通栏细线；--lift 是 none，所以它**嵌**在冷灰的地上，不浮起来。 */
   .card{background:var(--panel);border:1px solid var(--line);
         border-radius:var(--radius-card);
-        padding:20px 24px;margin-bottom:14px;position:relative;box-shadow:var(--lift)}
+        padding:20px 24px;margin-bottom:14px;position:relative;box-shadow:var(--shadow-soft)}
   .badge{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;
          border:1px solid var(--line2);color:var(--ink2);margin-right:8px}
   .badge.retrieve{border-color:var(--accent);color:var(--accent)}
@@ -361,7 +376,7 @@
              cursor:text;transform-origin:0% 0%}
   /* PDF 页永远是白纸（.pdf-page 是 #fff），所以这层选区不跟着主题变 —— 它压
      的是纸，不是界面。 */
-  .textLayer ::selection{background:rgba(43,90,107,.28)}
+  .textLayer ::selection{background:rgba(43,115,91,.24)}
   .reader-selection{position:sticky;bottom:0;margin-top:12px;padding:10px 14px;background:var(--accent-soft);
       border:1px solid var(--accent);border-radius:var(--radius);display:none;z-index:4}
   .reader-selection #rc-text{margin:6px 0;color:var(--accent);word-break:break-word;
@@ -571,8 +586,8 @@
           padding:10px 12px;color:var(--ink);font:13px/1.5 var(--mono);resize:vertical;outline:none}
   .editor:focus{border-color:var(--accent)}
   tr .editor{min-height:52px}
-  .save{background:var(--accent);color:var(--on-accent);border:none;border-radius:var(--radius);
-        padding:10px 20px;font-weight:600;font-size:13px;letter-spacing:.03em;cursor:pointer;
+  .save{background:var(--accent);color:var(--on-accent);border:none;border-radius:var(--radius-pill);
+        padding:10px 22px;font-weight:600;font-size:13px;letter-spacing:.03em;cursor:pointer;
         transition:filter .15s,opacity .15s}
   .save:hover:not(:disabled){filter:brightness(1.07)}
   /* dirty-state: a save button is muted until there's an unsaved change */
@@ -600,8 +615,8 @@
      without it a flex child refuses to shrink below its content and the row
      overflows even when it IS allowed to wrap. */
   .sesshead{display:flex;align-items:center;gap:8px;margin:10px 0 14px;flex-wrap:wrap;min-width:0}
-  .sessbtn{background:transparent;border:1px solid var(--line2);border-radius:var(--radius);color:var(--ink2);
-           padding:6px 13px;font-size:12.5px;cursor:pointer;white-space:nowrap;
+  .sessbtn{background:var(--panel);border:1px solid var(--line2);border-radius:var(--radius-pill);color:var(--ink2);
+           padding:6px 14px;font-size:12.5px;cursor:pointer;white-space:nowrap;
            transition:border-color .15s,color .15s,background .15s}
   .sessbtn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
   .teletoggle.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
@@ -676,7 +691,7 @@
   .chat-arch svg{min-width:0;width:100%;height:auto}
   .chatlog{display:flex;flex-direction:column;gap:10px}
   .bubble{align-self:flex-end;background:var(--accent);color:var(--on-accent);padding:10px 16px;
-          border-radius:16px 16px 4px 16px;max-width:75%;font-size:13.5px;line-height:1.65}
+          border-radius:18px 18px 6px 18px;max-width:75%;font-size:13.5px;line-height:1.65}
   .chatbar{display:flex;gap:12px;padding:16px 0 20px;border-top:1px solid var(--line);
            background:var(--bg);position:sticky;bottom:0;min-width:0}
   /* The conversation panel: a full-width VIEW (#agent/<id>), not a column. The
@@ -758,12 +773,12 @@
      width — so the input refused to go below that and pushed Send off the edge
      of the pane. The button then gets flex-shrink:0 so the input absorbs the
      squeeze instead of the control turning into a sliver. */
-  .chatbar input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line2);border-radius:12px;
-                 padding:12px 16px;color:var(--ink);font-size:14px;outline:none;
+  .chatbar input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line2);border-radius:16px;
+                 padding:12px 18px;color:var(--ink);font-size:14px;outline:none;
                  transition:border-color .15s,box-shadow .15s}
-  .chatbar input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-  .chatbar button{background:var(--accent);color:var(--on-accent);border:none;border-radius:12px;
-                  padding:0 22px;font-weight:600;font-size:13.5px;letter-spacing:.03em;
+  .chatbar input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  .chatbar button{background:var(--accent);color:var(--on-accent);border:none;border-radius:var(--radius-pill);
+                  padding:0 24px;font-weight:600;font-size:13.5px;letter-spacing:.03em;
                   cursor:pointer;flex-shrink:0;transition:filter .15s}
   .chatbar button:hover:not(:disabled){filter:brightness(1.07)}
   .chatbar button:disabled{opacity:.5;cursor:default}
@@ -1103,7 +1118,7 @@ details.subterm > summary.subterm-h::-webkit-details-marker{ display:none; }
 .conncard .conndesc{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
   overflow:hidden;min-height:36px}
 .connactions{margin-top:auto}
-.connmodal-back{position:fixed;inset:0;z-index:60;background:rgba(16,24,28,.5);
+.connmodal-back{position:fixed;inset:0;z-index:60;background:rgba(24,52,44,.38);
   display:flex;align-items:center;justify-content:center;padding:24px}
 .connmodal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-card);
   box-shadow:var(--lift-2);width:min(560px,100%);max-height:88vh;
@@ -1263,8 +1278,8 @@ html { scroll-behavior: smooth; }
 .study-head-main{min-width:0}
 .study-kicker{font-size:10.5px;letter-spacing:.16em;
   color:var(--ink3);font-weight:600}
-.study-title{font-family:var(--serif);font-size:27px;font-weight:400;line-height:1.3;
-  letter-spacing:.03em;margin:3px 0 3px}
+.study-title{font-family:var(--sans);font-size:27px;font-weight:600;line-height:1.3;
+  letter-spacing:.02em;margin:3px 0 3px}
 .study-sub{font-family:var(--mono);font-size:11.5px;color:var(--ink3);
   font-variant-numeric:tabular-nums}
 .study-head-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
@@ -1294,7 +1309,7 @@ html { scroll-behavior: smooth; }
   border:1px solid var(--line);overflow:hidden}
 .study-progress>span{display:block;height:100%;background:var(--accent);
   border-radius:99px}
-.study-big{font-family:var(--serif);font-size:46px;font-weight:400;line-height:1.1;
+.study-big{font-family:var(--sans);font-size:46px;font-weight:600;line-height:1.1;
   margin:2px 0;font-variant-numeric:tabular-nums}
 .study-review-cta .study-wide{margin:10px 0 8px}
 .study-list>*+*{border-top:1px solid var(--line)}
@@ -1376,7 +1391,7 @@ html { scroll-behavior: smooth; }
 .study-mix-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .study-mix{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-card);
   padding:16px 18px;display:flex;flex-direction:column;gap:7px;min-height:128px}
-.study-mix-value{font-family:var(--serif);font-size:20px;font-weight:400;line-height:1.2}
+.study-mix-value{font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.2}
 .study-mix-title{font-size:12.5px;font-weight:600}
 .study-mix .save{margin-top:auto}
 .study-flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -1401,15 +1416,16 @@ html { scroll-behavior: smooth; }
 .study-review-shell{max-width:760px;margin:6px auto 0}
 .study-review-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .study-review-shell>.study-progress{margin-bottom:12px}
-.study-flash{background:var(--panel);border:1px solid var(--line2);border-radius:var(--radius-card);
+.study-flash{background:linear-gradient(165deg,var(--panel) 62%,var(--accent-soft));
+  border:1px solid var(--line2);border-radius:var(--radius-card);
   min-height:360px;padding:44px 52px;display:flex;flex-direction:column;
   justify-content:center;align-items:center;text-align:center;cursor:pointer;
-  transition:border-color .18s}
+  box-shadow:var(--shadow-soft);transition:border-color .18s}
 .study-flash:hover{border-color:var(--accent)}
 .study-flash-word{font-family:var(--serif);font-size:38px;font-weight:600;line-height:1.25;
   letter-spacing:.02em}
 .study-flash-small{font-size:25px;margin-top:6px}
-.study-flash-question{font-family:var(--serif);font-size:24px;font-weight:400;line-height:1.65;
+.study-flash-question{font-family:var(--sans);font-size:24px;font-weight:600;line-height:1.65;
   margin-top:8px;max-width:620px;letter-spacing:.02em}
 .study-flash-answer{font-size:17px;line-height:1.85;margin-top:12px;text-align:left;
   max-width:620px}
@@ -1441,13 +1457,13 @@ html { scroll-behavior: smooth; }
 .study-dictation textarea:focus{border-color:var(--accent)}
 .study-score{display:flex;align-items:center;gap:12px;padding:10px 12px;margin-top:10px;
   border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
-.study-score b{font-family:var(--serif);font-size:28px;font-weight:400}
+.study-score b{font-family:var(--sans);font-size:28px;font-weight:600}
 .study-score.good{border-color:var(--good);background:var(--good-soft)}
 .study-score.warn{border-color:var(--warn);background:var(--warn-soft)}
 .study-summary{text-align:center;padding:34px}
 .study-summary .study-big{margin:2px auto}
 .study-summary-nums{display:flex;justify-content:center;gap:30px;margin:18px 0}
-.study-summary-nums>b{font-family:var(--serif);font-size:28px;font-weight:400;display:block}
+.study-summary-nums>b{font-family:var(--sans);font-size:28px;font-weight:600;display:block}
 .study-summary-nums>div{display:flex;flex-direction:column;gap:2px}
 .study-good{color:var(--good)}
 .study-bad{color:var(--bad)}
@@ -1487,7 +1503,7 @@ html { scroll-behavior: smooth; }
 }
 
 /* ==========================================================================
-   Atelier 收尾层：控件、焦点、选中与动效
+   Garden 收尾层：控件、焦点、选中与动效
    --------------------------------------------------------------------------
    放在最后，只做"同一件事的最后一句话"：输入框统一成压下去的一层纸，
    焦点统一成柔和的玉色光圈，动效只在允许动的时候出现。不新增布局。
@@ -1521,3 +1537,7 @@ nav a,nav .agent-link,nav .brand-model{position:relative}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
     transition-duration:.001ms!important}
 }
+
+/* Garden：主要面板统一一层很轻的纸影。小控件不加影子，避免整页浮起来。 */
+.reader-pane,.reader-ask,.kb-sidebar,.kb-editor,.mw-list,.mw-pane,
+.provcard,.study-mix{box-shadow:var(--shadow-soft)}

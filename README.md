@@ -1,208 +1,71 @@
 # 知研
 
-**一个无框架、可扩展的 Personal Agent Platform。**
+**一个无框架、可扩展、本地优先的个人 Agent 平台。**
 
-知研用原生 Python 实现 Agent Loop、会话、上下文管理、记忆、工具调度和运行轨迹，再把这些能力组合成不同的 Agent 与 Application。它以本地数据为中心，提供文档阅读、Agent 自主检索的 RAG 和研究笔记等工作区。
+知研（Zhiyan）用原生 Python 实现 Agent Loop、会话、上下文策略、记忆、工具调度、工作流和运行轨迹，再把这些能力组合成不同的 Agent 与 Application。默认存储是 SQLite，Web 前端没有构建步骤，模型通过服务商 SDK 接入。
+
+它不依赖 LangChain、LangGraph、CrewAI 等 Agent 框架；编排层、图执行器、记忆检索和前端都在仓库里直接实现。
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![uv](https://img.shields.io/badge/package%20manager-uv-DE5FE9)](https://docs.astral.sh/uv/)
 [![MIT License](https://img.shields.io/badge/license-MIT-2f855a)](LICENSE)
+[![Local First](https://img.shields.io/badge/storage-local%20SQLite-4f7f6b)](#配置与本地数据)
 
 [English](README.en.md)
 
-![知研 Web 工作区](docs/images/chat.jpg)
-
-![知研 Web 总览](docs/images/overview.jpg)
-
+| 对话 | 总览 |
+| --- | --- |
+| ![知研 对话](docs/images/chat.jpg) | ![知研 总览](docs/images/overview.jpg) |
 
 ## 为什么是一个 Platform
 
-知研 的核心不是某一个固定助手，而是一套可以反复组合的个人 Agent 运行底座：
-- **Agents** 每个 Agent 由提示词、工具范围、模型、上下文策略和运行预算组成，共用同一个 `AgentRuntime`。
-- **Application** Application 可以维护文档、选区、项目文件等页面状态，再通过 Context Bridge 把当前工作现场交给 Agent。
-- **运行过程可视化。** 一轮对话里的记忆门控、上下文压缩、模型迭代、工具调用、工作流节点、耗时和 Token 都会进入 Web 时间线。
-- **核心编排没有依赖 Agent 框架。** Loop、Session、Context Policy、Tool Registry 和 Graph Engine 都在仓库中直接实现，模型通信使用服务商 SDK。
+知研不是一个固定助手，而是一套可以反复组合的个人 Agent 运行底座：
 
-这里的“无框架”指 Agent 编排层不依赖 LangChain、LangGraph、CrewAI 等框架，并不表示项目没有第三方依赖。Web 服务使用 Python 标准库，默认存储使用 SQLite，前端是原生 HTML、CSS 和 JavaScript，没有构建步骤。
-## Web 工作区
+- **Agents** 由提示词、工具白名单、模型、上下文策略和运行预算组成，共用同一个 `AgentRuntime`。
+- **Applications** 维护文档、选区、学习项目等工作现场，再通过 Context Bridge 把当前页面状态交给 Agent。
+- **一条可见的运行链** 记忆门控、上下文压缩、模型迭代、工具调用、工作流节点、耗时和 Token 都会进入 Web 时间线。
+- **本地优先** 会话、记忆、文档、笔记、学习记录和轨迹都在本机；除了你配置的模型与外部服务，没有额外的托管后端。
+- **小而明确的实现** 核心编排没有框架魔法，读代码就能知道一轮对话发生了什么。
 
-知研 把同一套运行时组织成三个层次：
+## 内置 Agents
 
-| 层次 | 当前内置内容 | 作用 |
-| --- | --- | --- |
-| **Agents** | General、Research、Exam、Language | 用不同提示词和工具范围处理日常、研究、学习任务 |
-| **Applications** | 阅读器与文档库、知识库、深度研究、考试学习、语言学习 | 给 Agent 提供具体工作场景、状态和交互界面 |
-| **Management** | 总览、运维、记忆管理、行为、模型、连接 | 查看运行状态并管理模型、记忆和外部集成 |
-
-Reader 还有一个嵌在阅读器中的专用 Agent。它会收到当前文档和选区，而不是脱离材料自由回答。
-
-![知研 阅读区](docs/images/reader.png)
-
-### 平台当前提供的能力
-
-- 多 Agent 会话：独立对话线程、历史恢复、空闲后自动开启新会话。
-- 原生 Agent Loop：模型调用、工具执行、结果回填和最大迭代保护。
-- 上下文管理：工具结果预算、长结果指针化、会话裁剪和状态摘要。
-- 三类记忆：语义事实、情景记录和按需读取的 `SKILL.md` 程序性记忆。
-- 记忆门控：先判断当前问题是否需要记忆，再生成检索词并展示命中结果。
-- 工具系统：统一 Schema、Agent 工具白名单、安全执行和 MCP 扩展。
-- Application Context Bridge：把页面中的资源、正文、选区和状态注入当前会话。
-- 可观测性：实时步骤、历史回放、JSONL Trace、Token、耗时和费用统计。
-- 文档操作：文件上传、URL 导入、持久保存、重命名、删除、正文搜索，以及每份文档独立的 Reader 对话。
-- 文档 RAG：自动切块和向量索引，按意思检索，可选重排，返回带页码的原文供 Agent 回答。
-- 学习：考试备考与语言学习两条轨道；资料切单元、按天排期、容量提示、AI 候选卡必须带原文引文、SM-2 复习与复习日志。
-- 语言学习：词汇调度、词表导入、TTS 朗读、听写判分、写作批改和口语练习；不假装做语音识别或发音评分。
-- 模型工作台：在 Web 中配置服务商、API Key、主模型、门控模型和摘要模型，也可添加 OpenAI/Anthropic 兼容端点；embedding 和 reranker 可分别配置服务商与模型。
-
-## 文档阅读与操作
-
-阅读器把文档库、正文和内嵌问答放在同一个工作区：
-
-- **导入与管理**：上传 PDF、Markdown、纯文本、代码、JSON、CSV、HTML、XML，或粘贴公开 HTTP(S) URL。单份文件上限为 **32 MB**；支持列表搜索、重命名和删除。
-- **本地持久化**：原文件保存在 `.zhiyan/documents/`，提取的正文和元数据存入 SQLite。文档库由整个工作区共享，刷新和重启后仍可打开。
-- **长 PDF 阅读**：后端支持 HTTP Range，前端用 pdf.js 渲染页面与可选中的文字层；只渲染视野附近的页面，支持页码跳转、文内搜索和 Ctrl + 滚轮缩放。
-- **结合原文提问**：选中文字后可在右侧提问，Context Bridge 把当前文档、文档 ID 和选区交给 Reader Agent；每份文档有自己的对话线程。
-- **按需继续读**：上下文快照中的正文最多 24,000 字，截断时会注明全文长度。Agent 可用 `open_document` 的字符偏移继续读取，也可先检索再核对原文。
-- **可核对的引用**：阅读器里，回答中的 PDF 页码可点击跳转。扫描版 PDF 可以浏览，但没有文字层时无法提取正文供搜索和 RAG 使用；当前不包含 OCR。
-
-## 文档 RAG：由 Agent 决定怎么找
-
-Reader 和 Research Agent 都能使用文档检索工具。Agent 根据问题选择字面搜索、语义检索或继续读原文，再用同一个对话模型生成回答。
-
-| 工具 | 用途 |
+| Agent | 职责 |
 | --- | --- |
-| `list_documents` | 查看文档库中的材料和文档 ID |
-| `search_documents` | 按字面搜索标题与正文，返回命中片段 |
-| `semantic_search` | 按意思找段落，可限定当前文档或搜索整个文档库 |
-| `open_document` | 按字符偏移读取一段正文，并获得继续读取的位置 |
-| `fetch_document` | 抓取公开 URL，保存到文档库并读取开头 |
+| **General** | 日常助理，可以使用当前已连接的全部工具 |
+| **Research** | 检索、比较来源，读写文档库，把结论沉淀为可追溯的研究笔记 |
+| **Reader** | 嵌在阅读器里的专用 Agent，收到当前文档与选区，而不是脱离材料回答 |
+| **Exam Coach** | 按考纲和教材排期，陪过单元、生成候选卡、盯到期复习 |
+| **Language Tutor** | 词汇、听力、写作和口语练习，按真实词量控制难度 |
 
-索引和检索走两条路径：
+## 内置 Applications
 
-```text
-索引：文档入库 → 提取正文 → 结构与递归切块 → 批量 embedding → SQLite 向量存储
-检索：Agent 调用 semantic_search → 问题 embedding → 余弦相似度召回
-      → 可选 reranker 重排 → 段落与页码 → Agent 回答 → 阅读器跳转核对
-```
-
-- **切块**：Markdown 按标题层级分章节，长段落递归按段落、行、句子等切分，相邻块保留重叠。PDF 按连续文本切块，再把字符偏移映射回页码范围。
-- **自动索引**：后台线程处理新文档、启用前已入库的文档和中断的任务；更换 embedding 模型后自动重建。文档列表显示进度和错误，失败后可点击重新索引。
-- **向量检索**：向量以 float32 存在 SQLite，归一化后用纯 Python 计算余弦相似度，默认返回 6 条段落。
-- **可选重排**：配置 reranker 后，先召回 30 条候选，再按相关性重排取 6 条；重排服务失败时记录原因并退回向量顺序。
-- **两种检索各有用途**：字面搜索用 SQLite `LIKE`，语义搜索用 embedding。两者由 Agent 选择调用，当前没有关键词与向量分数自动融合的排序器。
-
-文档 RAG 与个人记忆是两套用途不同的检索：前者找文档段落，后者找个人事实和经历；个人记忆默认使用 SQLite FTS5/BM25，并为中文和日文补充子串匹配。
-
-## 深度研究(Deepr esearch)
-
-深度研究使用自研 Graph Engine，把一个主题组织成 `plan → research → synthesize → save` 工作流。每轮研究内部用线程池并行运行子 Agent，复用原生 Agent Loop。
-
-```mermaid
-flowchart TD
-    Topic[研究主题] --> Plan[plan：拆成最多 5 个子问题]
-    Plan --> Research[research：每个子问题一个并行 Agent]
-    Research --> Tools[search_web 搜索 → read_webpage 阅读 → 汇总笔记与 URL]
-    Tools --> Check{有新 URL 且未达轮次上限？}
-    Check -->|是：带上已有发现继续| Research
-    Check -->|否| Synth[synthesize：生成带来源的报告]
-    Synth --> Save[save：知识库 research 笔记 + outbox Markdown 文件]
-```
-
-- **分工与预算**：每个子 Agent 有独立上下文，只能调用 `search_web` 和 `read_webpage`。默认最多 3 轮、每个子问题每轮最多 8 次模型往返，页面可调整预算。
-- **继续还是停止**：代码从真实工具记录提取、去重 URL；没有新增信源或达到轮次上限就进入汇总。后续轮次带上已有发现，提示 Agent 避免重复研究。
-- **报告与保存**：汇总时要求附来源链接、说明证据冲突和未查完的子问题；报告写入知识库的 `research` 文件夹，并保存到 `.zhiyan/outbox/`。单个子 Agent 失败会记录原因，其余子问题仍继续。
-- **过程可见**：SSE 实时展示规划、轮次、搜索与阅读次数、预算使用和耗时；运行事件同时保存，历史报告可回放研究过程。
-
-可从 **深度研究** 页面、聊天命令 `/deep_research <主题>` 或 `uv run zhiyan deep_research "<主题>"` 启动，三种入口共用同一实现。代码见 [工作流定义](zhiyan/graph/workflows/deep_research.py)与 [运行绑定](zhiyan/ops/deep_research.py)。
-
-## 学习：考试备考与语言学习
-
-学习功能分成两条轨道，共用同一套「单元 → 计划 → 卡片 → 复习记录」，但计划形状和交互不同：
-
-| | 考试备考 | 语言学习 |
-| --- | --- | --- |
-| 核心问题 | 考纲覆盖与记忆保持 | 词汇量与听说读写练习 |
-| 原子对象 | 教材章节 / 考纲条目 | 词条、听写、文章 |
-| 计划 | 到考试日的单元覆盖，含容量与覆盖率提示 | 每日练习配比：新词、复习、听力、口语、阅读、写作 |
-| 度量 | 单元完成度、卡片正确率 | 活跃词、成熟词、目标词量覆盖、练习分钟 |
-
-工作流：
-
-```text
-上传考纲/教材/课文 → 切出单元 → 按考试日或每日配比排期
-→ 从单元生成候选卡（校验原文引文）→ 用户确认
-→ 每日学习 + 到期复习 → SM-2 更新下次到期
-```
-
-- **资料复用文档库**：学习项目只关联 `documents.id`，不复制文件；Markdown 按标题、PDF 按页码映射、短行大纲按行提取单元。
-- **计划由代码算**：每天不超过可用分钟；考试前覆盖不完会明确显示百分比；重排只从明天开始，旧版本保留。
-- **卡片必须可核对**：AI 生成的卡片先进入待确认区，`source_quote` 必须是单元原文的子串，否则拒收。确认后才进入复习。
-- **复习日志只追加**：卡片上的 `ease/interval/due` 是物化结果，`study_reviews` 才是事实；以后可以按日志重算调度。
-- **语言练习的边界**：TTS 只朗读文本；听写用 transcript 做归一化比对；写作只给修改稿和说明；口语只做对话与反馈，不做语音识别或发音评分。
-- **两个 Agent**：Exam Coach 负责考纲覆盖、计划和按原文出题；Language Tutor 负责词汇、对话纠错和语言练习。工具层按项目 `kind` 再校验一次，跨轨道操作会被拒绝。
-
-页面在 **考试学习**（`#exam`）和 **语言学习**（`#language`）：今日、计划、资料与单元、卡片审核，语言页另有词汇、听力。数据存放在 SQLite 的 `study_*` 表，首次使用才建；音频在 `.zhiyan/study/audio/`。API 是 `POST /api/study`，音频上传/读取是 `POST /api/study/audio/upload` 和 `GET /api/study/audio?id=`。
-
-首版不包含错题本、模拟考、语音识别、Anki 导入导出和 OCR。
-
-## 技术栈
-
-### 默认实现
-
-| 层次 | 技术 | 在项目中做什么 |
-| --- | --- | --- |
-| 语言与包管理 | Python 3.11+、uv、Hatchling | 开发、依赖管理与 Python 包构建 |
-| Agent 编排 | 原生 Python、dataclass、Tool Registry | AgentSpec、模型与工具循环、工具白名单与运行预算 |
-| 工作流 | 自研 Graph Engine、ThreadPoolExecutor | 节点、条件路由、并行分支与执行步数保护 |
-| 模型通信 | Anthropic SDK、OpenAI SDK | 对接两类兼容协议，并适配工具调用与流式回复 |
-| Web 后端 | `http.server.ThreadingHTTPServer`、SSE | 本地 API、静态文件和实时运行事件 |
-| Web 前端 | 原生 HTML/CSS/JavaScript、Fetch、浏览器 ES module 入口 | 工作区、文档操作、对话与时间线；无需前端构建 |
-| 文档解析与显示 | pypdf、HTMLParser、pdf.js、IntersectionObserver | PDF 提取、HTML 正文提取、PDF 文字层与页面虚拟化 |
-| 本地数据 | SQLite、文件系统、JSON/JSONL | 会话、记忆、笔记、文档、配置和轨迹 |
-| 个人记忆检索 | SQLite FTS5/BM25、`LIKE` | 事实与经历检索、中文等文本的子串补充匹配 |
-| 文档 RAG | 自研切块器、`urllib`、SQLite 向量 BLOB、纯 Python 余弦计算 | 调用 embedding/rerank 端点、存储向量与召回段落 |
-| 配置与终端 | python-dotenv、Rich | 本地环境配置和终端输出 |
-| 验证 | pytest、Ruff | 确定性回归测试与静态检查 |
-
-内置模型服务商配置包括 Anthropic、OpenAI、OpenRouter、Gemini、DeepSeek、MiniMax、Kimi、GLM、xAI 和 OpenCode（Zen / Go）。也可在模型页登记自己的兼容端点；具体模型是否可用取决于端点及其工具调用能力。
-
-### 可选集成与外部服务
-
-这些能力按需配置，不是启动基础工作区的前置条件：
-
-| 能力 | 技术或服务 | 依赖组 / 配置入口 |
-| --- | --- | --- |
-| 本地 embedding / reranker | 例如 Ollama + bge-m3、llama.cpp + bge-reranker-v2-m3 | 自行运行兼容端点，配置 embedding / reranker 角色 |
-| 外部工具 | MCP Python SDK、stdio MCP Server | `mcp`；`.zhiyan/mcp.json` |
-| 语义记忆后端 | Supabase / pgvector、Mem0、Zep、LangMem | `supabase` 或 `memory-backends` |
-| 情景记忆后端 | Notion | `notion` |
-| 日历 | Google Calendar API / OAuth、macOS 原生日历工具 | `gcal`；连接页配置 |
-| Web 搜索 | DuckDuckGo HTML、Tavily | 默认搜索无需 Key；Tavily 按需配置 Key |
-| 追踪与评测 | OpenTelemetry / OTLP、Arize Phoenix、DeepEval | `tracing` / `eval` |
-
-可选 Python 依赖组定义在 [`pyproject.toml`](pyproject.toml)。LangMem 适配器的可选依赖包含 LangGraph；平台的 Agent Loop 与 Graph Engine 仍由项目自己实现。
+| Application | 作用 |
+| --- | --- |
+| **阅读器 · 文档库** | 上传或导入文档，阅读、选区提问、检索原文、管理文档 |
+| **知识库** | 用文件夹和 `[[双链]]` 组织笔记，Agent 可以检索、引用和更新 |
+| **深度研究** | 一个主题 → 拆子问题 → 并行检索 → 汇总成带来源的报告 |
+| **考试学习** | 资料切单元、按天排期、从原文生成候选卡、SM-2 复习 |
+| **语言学习** | 每日练习配比、词汇调度、听写、写作批改与口语对话 |
 
 ## 架构
 
 ```mermaid
 flowchart LR
-    Web[Web Workspace] --> Agents[Agent Profiles]
-    Web --> Apps[Applications]
-    Agents --> Runtime[AgentRuntime]
-    Apps --> Bridge[Application Context Bridge]
-    Bridge --> Runtime
-    Runtime --> Session[Session & Context Policy]
-    Runtime --> Memory[Memory]
-    Runtime --> Loop[Native Agent Loop]
-    Loop --> Tools[Tool Registry & MCP]
-    Tools --> RAG[Document RAG]
-    RAG --> Vectors[(SQLite Vectors)]
-    RAG --> Embed[Embedding / Optional Reranker]
-    Memory --> Store[(SQLite / Optional Backends)]
-    Runtime --> Trace[Events, Trace & Evals]
+  Web[Web 工作区] --> Agents[Agent Profiles]
+  Web --> Apps[Applications]
+  Apps --> Bridge[Context Bridge]
+  Bridge --> Runtime[Agent Runtime]
+  Runtime --> Session[Session / Context Policy]
+  Runtime --> Memory[Memory]
+  Runtime --> Loop[Native Agent Loop]
+  Loop --> Tools[Tool Registry / MCP]
+  Tools --> RAG[Document RAG]
+  RAG --> Vectors[(SQLite Vectors)]
+  Memory --> Store[(SQLite / 可选后端)]
+  Runtime --> Trace[SSE / JSONL Trace / Evals]
 ```
 
-一次普通对话会经过下面这条路径：
+一次普通对话会经过：
 
 ```text
 Web 消息
@@ -214,26 +77,135 @@ Web 消息
   → 保存会话、记忆和运行轨迹
 ```
 
-核心代码保持小而明确：
+核心模块：
 
 | 模块 | 职责 |
 | --- | --- |
 | `zhiyan/core/loop.py` | 原生 observe → reason → act 循环 |
-| `zhiyan/core/runtime.py` | 组装一次完整 Agent Turn |
-| `zhiyan/core/session.py` | 会话历史、恢复和持久化 |
+| `zhiyan/core/runtime.py` | 组装一次完整的 Agent Turn |
+| `zhiyan/core/session.py` | 会话历史、恢复与持久化 |
 | `zhiyan/core/context/` | 上下文预算、裁剪和摘要策略 |
 | `zhiyan/core/spec.py` | 可复用的 `AgentSpec` |
 | `zhiyan/core/tools.py` | 工具 Schema、白名单和执行边界 |
-| `zhiyan/memory/` | 记忆门控、检索、整理和技能 |
+| `zhiyan/memory/` | 记忆门控、检索、整理与技能 |
 | `zhiyan/applications/` | Application 后端与 Context Bridge |
-| `zhiyan/tools/documents.py` | 文档列表、字面搜索、语义检索和分段读取工具 |
-| `zhiyan/applications/study.py` | 学习项目、单元、两种排期、SM-2、复习日志和音频存储 |
-| `zhiyan/ops/study_cards.py` | 从单元生成候选卡，并校验原文引文 |
-| `zhiyan/ops/study_language.py` | 词表导入、写作批改、听写反馈 |
-| `zhiyan/tools/study.py` | 学习 Agent 的读写工具，按项目 kind 隔离轨道 |
-| `zhiyan/rag/` | 切块、embedding、向量存储、后台索引与重排 |
-| `zhiyan/graph/` | 项目自己的图执行器和工作流 |
-| `zhiyan/ops/web/` | 本地 Web API 与 SSE 流式事件 |
+| `zhiyan/rag/` | 切块、Embedding、向量存储、后台索引与重排 |
+| `zhiyan/graph/` | 自研图执行器和工作流 |
+| `zhiyan/ops/web/` | 本地 Web API 与 SSE 事件流 |
+
+## 文档阅读与 RAG
+
+阅读器把文档库、正文和内嵌问答放在同一个工作区：
+
+![知研 阅读区](docs/images/reader.png)
+
+- 上传 PDF、Markdown、纯文本、代码、JSON、CSV、HTML、XML，或导入公开 HTTP(S) URL；单文件上限 32 MB。
+- 原文件保存在 `.zhiyan/documents/`，正文与元数据存入 SQLite；刷新和重启后仍可打开。
+- 长 PDF 支持 Range 请求、pdf.js 渲染、页码跳转、文内搜索和 Ctrl + 滚轮缩放。
+- 选中文字即可在右侧提问；Context Bridge 会把当前文档、文档 ID 和选区交给 Reader Agent。
+- 上下文快照中的正文最多 24,000 字，截断时会注明全文长度；Agent 可以用 `open_document` 按字符偏移继续读。
+
+文档检索由 Agent 自己选择工具：
+
+| 工具 | 用途 |
+| --- | --- |
+| `list_documents` | 查看文档库与文档 ID |
+| `search_documents` | 按字面搜索标题和正文 |
+| `semantic_search` | 按意思检索段落，可限定当前文档或整个文档库 |
+| `open_document` | 按字符偏移读取一段正文 |
+| `fetch_document` | 抓取公开 URL，保存到文档库并读取开头 |
+
+```text
+索引：文档入库 → 提取正文 → 结构与递归切块 → 批量 embedding → SQLite 向量
+检索：问题 embedding → 余弦相似度召回 → 可选 reranker → 段落与页码 → Agent 回答
+```
+
+- **切块**：Markdown 按标题层级分章节，长段落递归切分并保留重叠；PDF 按连续文本切块，再映射回页码。
+- **自动索引**：后台线程处理新文档和中断任务；更换 embedding 模型后自动重建。
+- **向量检索**：向量以 float32 存在 SQLite，归一化后用纯 Python 计算余弦相似度。
+- **可选重排**：配置 reranker 后先召回 30 条候选，再重排取 6 条；失败时记录原因并退回向量顺序。
+- **两种检索各司其职**：字面搜索用 SQLite `LIKE`，语义搜索用 embedding，由 Agent 决定调用哪一个。
+
+## 深度研究
+
+深度研究使用自研 Graph Engine，把一个主题组织成 `plan → research → synthesize → save` 工作流；每轮研究内部用线程池并行运行子 Agent，复用原生 Agent Loop。
+
+![知研 深度研究](docs/images/deepresearch.jpg)
+
+```mermaid
+flowchart TD
+  Topic[研究主题] --> Plan[plan：拆成最多 5 个子问题]
+  Plan --> Research[research：每个子问题一个并行 Agent]
+  Research --> Tools[search_web → read_webpage → 汇总笔记与 URL]
+  Tools --> Check{有新 URL 且未达轮次上限？}
+  Check -->|是| Research
+  Check -->|否| Synth[synthesize：生成带来源的报告]
+  Synth --> Save[save：知识库研究笔记 + outbox Markdown]
+```
+
+- 每个子 Agent 有独立上下文，只能调用 `search_web` 和 `read_webpage`。
+- 代码从真实工具记录提取并去重 URL；没有新增信源或达到轮次上限就进入汇总。
+- 报告要求附来源链接、说明证据冲突和未查完的子问题。
+- 报告写入知识库的 `research` 文件夹，同时保存到 `.zhiyan/outbox/`。
+- 单个子 Agent 失败会记录原因，其余子问题继续。
+
+## 学习：考试备考与语言学习
+
+![知研 考试学习](docs/images/study.jpg)
+
+两条轨道共用「单元 → 计划 → 卡片 → 复习记录」，但计划形状和交互不同：
+
+| | 考试备考 | 语言学习 |
+| --- | --- | --- |
+| 核心问题 | 考纲覆盖与记忆保持 | 词汇量与听说读写练习 |
+| 原子对象 | 教材章节 / 考纲条目 | 词条、听写、文章 |
+| 计划 | 到考试日的单元覆盖，含容量与覆盖率提示 | 每日练习配比：新词、复习、听力、口语、阅读、写作 |
+| 度量 | 单元完成度、卡片正确率 | 活跃词、成熟词、目标词量覆盖、练习分钟 |
+
+```text
+上传考纲/教材/课文 → 切出单元 → 按考试日或每日配比排期
+→ 从单元生成候选卡（校验原文引文）→ 用户确认
+→ 每日学习 + 到期复习 → SM-2 更新下次到期
+```
+
+- **资料复用文档库**：学习项目只关联 `documents.id`，不复制文件。
+- **计划由代码算**：每天不超过可用分钟；考试前覆盖不完会明确显示百分比。
+- **卡片必须可核对**：AI 生成的卡片先进入待确认区，`source_quote` 必须是单元原文的子串。
+- **复习日志只追加**：卡片上的 `ease/interval/due` 是物化结果，`study_reviews` 才是事实。
+- **语言练习的边界**：TTS 只朗读文本；听写用 transcript 比对；写作只给修改稿和说明；口语只做对话与反馈，不做语音识别或发音评分。
+
+## 记忆
+
+知研把个人记忆分成三类，默认都落在本地 SQLite：
+
+| 类型 | 内容 | 默认检索 |
+| --- | --- | --- |
+| **语义事实** | 偏好、关系、长期设定 | SQLite FTS5/BM25，中文和日文补充子串匹配 |
+| **情景记忆** | 某天发生了什么、做过什么 | 时间与关键词检索 |
+| **程序性记忆** | `SKILL.md` 写的步骤和规则 | Agent 按需读取 |
+
+![知研 记忆](docs/images/memory.jpg)
+
+- **记忆门控**：先判断当前问题需不需要记忆，再生成检索词，命中结果会出现在运行时间线里。
+- **共享记忆池**：所有 Agent 读写同一套事实、情景和笔记；记录里的 `agent_id` 只表示“谁写下的”。
+- **可整理**：支持合并、修正和遗忘；整理结果保留来源，方便回看。
+- **可选后端**：Supabase/pgvector、Mem0、Zep、LangMem、Notion 都可以按需配置，SQLite 始终是默认。
+
+## 模型与连接
+
+内置服务商包括 Anthropic、OpenAI、OpenRouter、Gemini、DeepSeek、MiniMax、Kimi、GLM、xAI 和 OpenCode（Zen / Go）。也可以在「模型」页登记 OpenAI / Anthropic 兼容端点。
+
+- **角色模型**：主模型、记忆门控、摘要、Embedding、Reranker 可以分别配置。
+- **连接**：Google Calendar、Apple Calendar、Notion、Supabase、Tavily 等按需启用。
+- **MCP**：在 `.zhiyan/mcp.json` 中登记 stdio MCP Server。
+- **本地模型**：Embedding 和 Reranker 可以指向 Ollama、llama.cpp 等本地兼容端点。
+
+## 可观测性
+
+- Web 时间线实时显示记忆门控、上下文压缩、模型迭代、工具调用、工作流节点、耗时与 Token。
+- 每轮对话保存为 JSONL Trace（`.zhiyan/traces/`），历史报告可以回放研究过程。
+- 「运维」页汇总调用次数、Token、费用、工具错误和平均耗时。
+- 可选接入 OpenTelemetry / Arize Phoenix 查看瀑布图。
 
 ## 快速开始
 
@@ -250,7 +222,7 @@ uv sync
 uv run zhiyan
 ```
 
-终端会打印实际访问地址。默认是：
+终端会打印实际访问地址，默认：
 
 - Windows：`http://localhost:8888`
 - macOS / Linux：`http://localhost:7777`
@@ -259,100 +231,68 @@ uv run zhiyan
 
 首次启动后：
 
-1. 打开左侧的 **模型** 页面。
+1. 打开左侧「模型」页。
 2. 选择服务商并填写 API Key。
 3. 获取或填写模型 ID，保存并设为当前服务商。
-4. 回到 **General** 开始第一段对话。
+4. 回到 General 开始第一段对话。
 
-服务商配置由 Web 写入本地 `.env`；自定义服务商结构保存在 `.zhiyan/providers.json`。这两个位置都已被 Git 忽略。
+## 配置与本地数据
 
-### 启用文档语义检索（可选）
+- `.env`：当前服务商、主模型、角色模型和各服务商 Key。Web 的模型页会写入这里。
+- `.zhiyan/providers.json`：自定义服务商结构。
+- `.zhiyan/state.db`：会话、记忆、笔记、文档元数据、学习记录等。
+- `.zhiyan/documents/`：上传的原文件。
+- `.zhiyan/outbox/`：研究草稿、消息草稿等输出。
+- `.zhiyan/traces/`：按天保存的 JSONL 运行轨迹。
 
-先在 **模型** 页添加提供 embedding 的自定义服务商。例如，将 `local_ollama` 的协议设为 `openai`、Base URL 设为 `http://127.0.0.1:11434/v1`，并在本机准备好 Ollama 的 `bge-m3` 模型。随后在项目 `.env` 中设置：
+`.env` 和 `.zhiyan/` 都已被 Git 忽略。API Key 只保存在本地，并且只会随请求发送给你配置的服务商。
 
-```dotenv
-ZHIYAN_EMBED_PROVIDER=local_ollama
-ZHIYAN_EMBED_MODEL=bge-m3
+## 项目结构
+
+```text
+zhiyan/
+  core/          Agent Loop、Session、Context Policy、Tool Registry
+  agents/        内置 Agent Profile
+  applications/  文档库、知识库、学习等 Application 后端
+  tools/         文档、知识、日历、消息、MCP 等工具
+  memory/        语义 / 情景 / 程序性记忆
+  rag/           切块、Embedding、向量存储、索引与重排
+  graph/         图执行器与工作流（triage / gather / deep research）
+  ops/web/       本地 Web API、SSE 和静态工作区
+  ops/static/    原生 HTML / CSS / JavaScript（无构建）
+skills/          程序性记忆（SKILL.md）
+evals/           确定性测试、LLM-as-judge、离线评测集
+sql/             Supabase 初始化脚本
 ```
 
-重启 知研 后，后台会自动为文档库建立索引。**服务商与模型都配置才会启用**；未配置时仍可阅读文档和做字面搜索。
-
-需要重排时，再登记一个提供 `/rerank` 接口的兼容服务商，例如 `local_rerank`，并设置：
-
-```dotenv
-ZHIYAN_RERANK_PROVIDER=local_rerank
-ZHIYAN_RERANK_MODEL=bge-reranker-v2-m3
-```
-
-上面的服务商 ID 是示例，需要与模型页登记的 ID 一致。embedding、reranker 和聊天模型可以分别使用不同服务；本地服务由用户自行启动。完整配置与实现说明见 [开发指南](docs/DEVELOPMENT_GUIDE.md#文档库的语义检索rag)及 [`.env.example`](.env.example)。
-
-## 扩展自己的 Agent
-
-所有 Agent 都运行在同一个 `AgentRuntime` 上。新增 Agent 的主要工作是声明一个 `AgentProfile`：
-
-```python
-AgentProfile(
-    id="planner",
-    name="Planner",
-    icon="◇",
-    description="把复杂目标拆成可执行计划。",
-    spec=AgentSpec(
-        name="planner",
-        system_prompt="You are a planning agent...",
-        tools=frozenset({"search_web", "save_note"}),
-    ),
-)
-```
-
-运行时会继续负责会话、上下文、记忆、工具执行和轨迹。Agent 只声明自己与其他 Agent 不同的部分。
-
-## 扩展自己的 Application
-
-Application 是带状态的工作界面，而不是另一套 Agent Core。一个新的 Application 通常需要：
-
-1. 在 `zhiyan/applications/` 中实现领域数据和操作。
-2. 增加对应的 Web API 与前端页面。
-3. 用 `ApplicationContextBridge` 发布当前资源、正文、选区或页面状态。
-4. 将渲染后的 Application Context 交给目标 Agent 的下一轮运行。
-
-这样可以继续增加邮件处理、项目管理、数据分析等 Application，而不用复制 Agent Loop。更具体的代码入口见 [`docs/DEVELOPMENT_GUIDE.md`](docs/DEVELOPMENT_GUIDE.md)。
-
-## 数据与安全边界
-
-- Web 服务只监听 `127.0.0.1`。
-- 默认数据位于 `.zhiyan/`，主要状态存放在 SQLite `state.db`。
-- API Key 保存在本地 `.env`，Web 只显示是否已配置，不回传完整 Key。
-- 对话内容和工具上下文会发送给你选择的模型服务商；文档块与检索问题会发送给配置的 embedding / reranker 端点，本地端点可用于在本机处理这部分数据。
-- 学习项目、单元、卡片和复习日志存放在 SQLite 的 `study_*` 表；上传的听力音频在 `.zhiyan/study/audio/`。生成卡片和写作批改会把对应单元/写作文本发给模型服务商；TTS 朗读使用浏览器自带语音，不经过模型服务商。
-- 连接日历、Notion、搜索或 MCP 后，也会产生相应的外部请求。
-
-完整说明见 [`SECURITY.md`](SECURITY.md)。
-
-## 开发与验证
-
-安装开发依赖：
+## 开发与测试
 
 ```bash
-uv sync --extra dev
+make run          # 启动 Web 工作区
+make web          # 同上
+make brief        # 日历 + 邮件 + 记忆的晨间简报（Loop）
+make gather       # 多来源并行抓取后汇总（Graph）
+make lint         # ruff
+make eval         # 确定性测试，不调用模型
+make eval-judge   # LLM-as-judge，需要 API Key
+make gate         # 发布门禁：确定性测试 + judge 阈值
 ```
 
-运行静态检查和离线测试：
+评测材料在 `evals/`：
 
-```bash
-uv run ruff check zhiyan evals
-uv run python -m pytest -q evals/deterministic
-```
+- `evals/deterministic/`：不联网、不调用模型的回归测试。
+- `evals/judge/`：需要模型参与的回答质量评测。
+- `evals/agent_benchmark/`：83 条离线任务，覆盖工具调用、上下文工程和文档 RAG；`validate.py` 会离线校验标准调用与证据。
 
-确定性测试使用脚本客户端替代真实模型，不需要 API Key 或网络。
+开发约定和模块说明见 [docs/DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md)。
 
-另有 [90 条 Agent 评测集](evals/agent_benchmark/README.md)，覆盖工具调用、上下文压缩与 Agentic RAG，包含固定材料、标准答案和离线数据校验；真实模型评测运行器与成绩尚未接入。
+## 设计取舍与边界
 
-## 文档
-
-- [`docs/DEVELOPMENT_GUIDE.md`](docs/DEVELOPMENT_GUIDE.md)：代码入口和扩展 Agent、Application、Tool 的方法
-- [`SECURITY.md`](SECURITY.md)：本地数据、模型请求和工具权限边界
-
-
+- **单用户、本地优先**：这不是多租户 SaaS，也没有面向公网部署的权限和限流；默认只监听 `127.0.0.1`。
+- **不做 OCR**：扫描版 PDF 可以浏览，但没有文字层时无法提取正文供搜索和 RAG 使用。
+- **不假装能力**：语音只做 TTS 朗读，不做语音识别或发音评分；口语练习是对话与反馈，不是考试评分。
+- **检索不是万能**：语义检索依赖 Embedding 质量；没有配置 reranker 时按向量顺序返回。
+- **模型输出需要核对**：涉及金额、日期、医疗、法律等高风险内容时，请把 Agent 的结论当作草稿，而不是最终答案。
 ## License
 
 [MIT](LICENSE)
