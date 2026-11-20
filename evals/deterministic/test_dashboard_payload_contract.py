@@ -48,7 +48,6 @@ def _stub(monkeypatch, settings, module=web_data):
     """
     monkeypatch.setattr(module, "load_settings", lambda: settings)
     monkeypatch.setattr(module, "settings_info", lambda: {"model": "test-model"})
-    monkeypatch.setattr(module, "list_connections", list)
     monkeypatch.setattr(module, "list_providers", list)
     monkeypatch.setattr(module, "usage_summary", lambda _: {"total_cost": 0})
     monkeypatch.setattr(module, "tools_info", lambda: {"catalog": []})

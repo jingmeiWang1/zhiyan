@@ -25,7 +25,7 @@ def collect(agent_id: str = "default") -> dict:
     # "chat_pending", "graph", "study_info".
     _sync_dependencies()
     for name in (
-        "load_settings", "settings_info", "list_connections", "list_providers",
+        "load_settings", "settings_info", "list_providers",
         "tools_info", "usage_summary", "list_models",
     ):
         setattr(_data, name, globals()[name])
@@ -44,7 +44,7 @@ def _sync_dependencies() -> None:
     """Forward the public Web dependency seam to the split modules."""
     for module in (_data, _runtime):
         for name in (
-            "load_settings", "settings_info", "list_connections", "list_providers",
+            "load_settings", "settings_info", "list_providers",
             "tools_info", "usage_summary", "list_models", "get_agent",
             "maybe_rotate_session", "dash_session", "application_contexts",
         ):

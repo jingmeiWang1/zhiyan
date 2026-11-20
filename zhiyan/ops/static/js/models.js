@@ -233,9 +233,9 @@ async function pinModel(provider, model, action){
 // layered over anything else to be reachable, and the thing you are editing
 // stays next to the list you are choosing from.
 //
-// .provgrid/.provcard/.provlogo/.provname/.provactions are NOT this page's any
-// more — the Connections page carries them (views.js connectionCard), so they
-// stay in style.css untouched. Everything below is new and models-only.
+// .provgrid/.provcard/.provlogo/.provname/.provactions belonged to the
+// Connections page (views.js connectionCard); that page is gone, but style.css
+// still defines them. Everything below is new and models-only.
 //
 // Status is derived, never stored: unconfigured = no key, configured = key set
 // but disabled, enabled = key set and available. The ACTIVE provider
@@ -484,8 +484,8 @@ async function submitAddProvider(force, confirmed){
   catch(e){ r = {ok: false, error: e.message || String(e)}; }
   if (button){ button.disabled = false; button.textContent = label; }
   if (!r.ok){
-    // Same escape hatch as the Connections page: an endpoint that refuses to
-    // list its models is still a legitimate thing to save deliberately.
+    // Escape hatch: an endpoint that refuses to list its models is still a
+    // legitimate thing to save deliberately.
     if (msg) msg.innerHTML = r.can_force
       ? `${esc(r.error)} <button class="save ghost conn-force" onclick="submitAddProvider(true)">仍然保存</button>`
       : esc(r.error || "保存失败");

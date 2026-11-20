@@ -32,7 +32,6 @@ def test_collect_shares_memory_and_scopes_chat(tmp_path, monkeypatch):
 
     monkeypatch.setattr(web, "load_settings", lambda: settings)
     monkeypatch.setattr(web, "settings_info", lambda: {"model": "test"})
-    monkeypatch.setattr(web, "list_connections", list)
     monkeypatch.setattr(web, "list_providers", list)
     monkeypatch.setattr(web, "tools_info", lambda: {"catalog": []})
     monkeypatch.setattr(web, "usage_summary", lambda _: {"total_cost": 0})

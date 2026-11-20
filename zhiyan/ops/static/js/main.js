@@ -15,7 +15,7 @@ let activeView = null, activeSub = null;
 // out of that page, what remained was two switches that change how a turn runs,
 // which is a behaviour, not a setting.
 const TITLES = {agent:"对话", overview:"总览", gateway:"网关", loop:"循环",
-                memory:"记忆", tools:"工具", models:"模型", connections:"连接",
+                memory:"记忆", tools:"工具", models:"模型",
                 ops:"LLM 运维", reader:"阅读器", knowledge:"知识库",
                 graph:"图工作流——为循环提供结构",
                 exam:"考试学习",
@@ -33,7 +33,7 @@ function setCount(id, value){
   const el = document.getElementById(id);
   if (el) el.textContent = value;
 }
-// The views that are STATIC CONFIGURATION — 模型 / 设置 / 连接 / 数据库. Nothing
+// The views that are STATIC CONFIGURATION — 模型 / 设置 / 数据库. Nothing
 // on them is produced by the 5s poll: every value they show arrives with the
 // payload and is repainted by the action that changed it (models.js calls
 // refresh() itself after an add or a remove, which is why the switch and the
@@ -51,7 +51,7 @@ function setCount(id, value){
 // followed by a quoted parenthesis. The counter test scans the whole file with
 // /setCount\("([^"]+)"/ and would read the rest of the sentence as a counter id
 // — it did exactly that to the first version of this comment.)
-const STATIC_VIEWS = new Set(["models", "settings", "connections", "database"]);
+const STATIC_VIEWS = new Set(["models", "settings", "database"]);
 let staticFresh = false;   // ...has a fetch succeeded since we landed on one?
 function render(){
   if (!D) return;
@@ -96,7 +96,7 @@ function render(){
     // close your expanded 详情 boxes anyway (the state lives in the node, and the
     // repaint replaces it); syncLogClass now carries them across, and skips the
     // repaint entirely when the log has not changed.
-  } else if ((view === "memory" || view === "settings" || view === "database" || view === "models" || view === "connections") && editing && !subChanged){
+  } else if ((view === "memory" || view === "settings" || view === "database" || view === "models") && editing && !subChanged){
     // don't wipe an in-progress edit on the 5s refresh — but DO switch sub-tabs
   } else if (view === "deepresearch" && !subChanged){
     // Same trap again. This page has an <input> you are still typing a topic

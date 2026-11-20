@@ -22,12 +22,9 @@ from zhiyan.applications.reader import ReaderError, load_upload, load_url
 from zhiyan.config import load_settings
 from zhiyan.db import connect
 from zhiyan.integrations import (
-    apply_integration,
     apply_provider,
     apply_provider_disabled,
-    list_connections,
     list_providers,
-    test_integration,
 )
 from zhiyan.ops import browser_agent, commands
 from zhiyan.ops.browser_agent import (agent_lock, dash_session, get_agent, maybe_rotate_session,
@@ -416,7 +413,6 @@ def collect(agent_id: str = "default") -> dict:
         "providers": [asdict(view) for view in list_providers()],
         "knowledge_info": knowledge_info(),
         "study_info": study_info(conn),
-        "connections": [asdict(view) for view in list_connections()],
         "tools": tools_info(),
         "usage": usage_summary(home),
     }

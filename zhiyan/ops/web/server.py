@@ -28,12 +28,9 @@ from zhiyan.applications.reader import (
 from zhiyan.config import load_settings
 from zhiyan.db import connect
 from zhiyan.integrations import (
-    apply_integration,
     apply_provider,
     apply_provider_disabled,
-    list_connections,
     list_providers,
-    test_integration,
 )
 from zhiyan.ops import browser_agent, commands
 from zhiyan.ops.browser_agent import agent_lock, dash_session, get_agent, maybe_rotate_session
@@ -405,7 +402,6 @@ class Handler(BaseHTTPRequestHandler):
                   "/api/library": library_action,
                   "/api/study": study_action,
                   "/api/reader": None,
-                  "/api/connections": None, "/api/connections/test": None,
                   "/api/providers": None, "/api/extras": extras_action}
         if self.path not in routes:
             self._send(
@@ -428,14 +424,6 @@ class Handler(BaseHTTPRequestHandler):
                     out = {"ok": True, "document": load_upload(str(payload.get("name", "")), str(payload.get("data", "")))}
                 else:
                     raise ReaderError("Reader action 必须是 url 或 upload")
-            elif self.path == "/api/connections":
-                result = apply_integration(payload.get("key", ""), payload.get("values") or {},
-                                           tuple(payload.get("clear") or ()), force=bool(payload.get("force")))
-                if result.ok and payload.get("key") == "notion":
-                    invalidate_notion_cache()
-                out = asdict(result)
-            elif self.path == "/api/connections/test":
-                out = asdict(test_integration(payload.get("key", "")))
             elif self.path == "/api/providers":
                 # A payload that only toggles availability goes to the enable/
                 # disable path; the ＋ card's add/remove goes to its own action;

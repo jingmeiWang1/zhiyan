@@ -1,6 +1,6 @@
 ---
 name: weekly-brief
-description: Prepare a weekly or morning brief from the user's calendar, mail, tasks, and recent memory.
+description: 根据用户的日历、邮件、任务和近期记忆，准备每周简报或晨间简报 —— Prepare a weekly or morning brief from the user's calendar, mail, tasks, and recent memory.
 ---
 
 ## Instructions

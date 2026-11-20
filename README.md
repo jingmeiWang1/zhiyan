@@ -153,6 +153,10 @@ flowchart TD
 
 ![知研 考试学习](docs/images/study.jpg)
 
+![知研 语言学习](docs/images/language.jpg)
+
+![知研 词汇与复习](docs/images/language-vocab.jpg)
+
 两条轨道共用「单元 → 计划 → 卡片 → 复习记录」，但计划形状和交互不同：
 
 | | 考试备考 | 语言学习 |
@@ -191,12 +195,12 @@ flowchart TD
 - **可整理**：支持合并、修正和遗忘；整理结果保留来源，方便回看。
 - **可选后端**：Supabase/pgvector、Mem0、Zep、LangMem、Notion 都可以按需配置，SQLite 始终是默认。
 
-## 模型与连接
+## 模型与集成
 
 内置服务商包括 Anthropic、OpenAI、OpenRouter、Gemini、DeepSeek、MiniMax、Kimi、GLM、xAI 和 OpenCode（Zen / Go）。也可以在「模型」页登记 OpenAI / Anthropic 兼容端点。
 
 - **角色模型**：主模型、记忆门控、摘要、Embedding、Reranker 可以分别配置。
-- **连接**：Google Calendar、Apple Calendar、Notion、Supabase、Tavily 等按需启用。
+- **集成**：Google Calendar、Apple Calendar、Notion、Supabase、Tavily 等在 `.env` 中按需启用，`zhiyan connections` 查看状态。
 - **MCP**：在 `.zhiyan/mcp.json` 中登记 stdio MCP Server。
 - **本地模型**：Embedding 和 Reranker 可以指向 Ollama、llama.cpp 等本地兼容端点。
 

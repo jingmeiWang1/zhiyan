@@ -31,7 +31,7 @@ Zhiyan organizes the same runtime into three product layers:
 | --- | --- | --- |
 | **Agents** | General, Research, Exam, Language | Different prompts and tool scopes for everyday, research, and study work |
 | **Applications** | Reader and document library, Knowledge Base, Deep Research, Exam Prep, Language Learning | Stateful work surfaces that give an Agent a concrete task environment |
-| **Management** | Overview, Ops, Memory, Behaviour, Models, Connections | Inspect runtime state and manage models, memory, and integrations |
+| **Management** | Overview, Ops, Memory, Behaviour, Models | Inspect runtime state and manage models, memory, and integrations |
 
 The Reader also has a dedicated embedded Agent. It receives the open document and current selection instead of answering independently from the material.
 
@@ -116,6 +116,10 @@ Start from the **Deep Research** page, `/deep_research <topic>` in chat, or `uv 
 
 ## Study: exam preparation and language learning
 
+![Zhiyan language learning](docs/images/language.jpg)
+
+![Zhiyan vocabulary and review](docs/images/language-vocab.jpg)
+
 Study has two tracks that share one `unit → plan → card → review` core, but schedule and measure differently:
 
 | | Exam preparation | Language learning |
@@ -173,7 +177,7 @@ These capabilities are configured as needed and are not prerequisites for the ba
 | External tools | MCP Python SDK, stdio MCP servers | `mcp`; `.zhiyan/mcp.json` |
 | Semantic memory backends | Supabase / pgvector, Mem0, Zep, LangMem | `supabase` or `memory-backends` |
 | Episodic memory backend | Notion | `notion` |
-| Calendar | Google Calendar API / OAuth, native macOS calendar tools | `gcal`; Connections configuration |
+| Calendar | Google Calendar API / OAuth, native macOS calendar tools | `gcal`; `.env` / `zhiyan connections` |
 | Web search | DuckDuckGo HTML, Tavily | Default search needs no key; Tavily uses an optional key |
 | Tracing and evaluation | OpenTelemetry / OTLP, Arize Phoenix, DeepEval | `tracing` / `eval` |
 

@@ -25,12 +25,9 @@ from zhiyan.config import load_settings
 from zhiyan.core.tools import as_text
 from zhiyan.db import connect
 from zhiyan.integrations import (
-    apply_integration,
     apply_provider,
     apply_provider_disabled,
-    list_connections,
     list_providers,
-    test_integration,
 )
 from zhiyan.ops import browser_agent, commands
 from zhiyan.ops.browser_agent import agent_lock, dash_session, get_agent, maybe_rotate_session

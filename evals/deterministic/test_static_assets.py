@@ -52,39 +52,15 @@ def test_static_agent_navigation_has_a_module_handler():
 
 
 def test_connection_card_logos_are_local_and_complete():
-    """Dynamic card image paths are generated in JS, so index.html cannot pin
-    them. Keep every registry-backed logo present and valid."""
+    """The 连接 page is gone; its logo files stay on disk until someone decides
+    to delete them. Keep them valid in the meantime rather than leaving a
+    half-written asset behind for whatever reads them next."""
     logo_dir = STATIC / "logos" / "connections"
     assert {path.name for path in logo_dir.glob("*.svg")} == CONNECTION_LOGOS
     for name in CONNECTION_LOGOS:
         svg = (logo_dir / name).read_text(encoding="utf-8")
         assert svg.startswith("<svg "), f"{name} is not an SVG"
         assert "<title>" in svg, f"{name} needs an accessible title"
-
-
-def test_connection_display_groups_stay_in_product_order():
-    """The order is the reading order of the page, so it is pinned deliberately
-    rather than left to whatever the object literal happens to say.
-
-    "Memory", not "Storage": the registry group is called "Memory & Storage" and
-    the display map used to keep the wrong half. Notion is the episodic store,
-    Supabase the semantic one, and every hosted memory service that joins them
-    is semantic too — none of it is generic storage."""
-    assert 'const CONNECTION_GROUPS = ["Productivity", "Memory", "Tools"]' in JS_SRC
-
-
-def test_every_registry_group_has_a_display_name():
-    """connectionDisplayGroup falls back to "Tools" for anything unmapped, so a
-    new registry group would not error — it would quietly file itself under the
-    wrong heading and nobody would notice. Pin the mapping instead of trusting
-    the fallback."""
-    from zhiyan import integrations
-
-    mapped = set(re.findall(r'^\s*"([^"]+)":\s*"[^"]+",\s*$', JS_SRC, re.MULTILINE))
-    # AI Providers has its own page (Models), so it is deliberately not here.
-    groups = {i.group for i in integrations.registry()} - {"AI Providers"}
-    missing = groups - mapped
-    assert not missing, f"registry groups with no display name, they'd land in Tools: {missing}"
 
 
 def _defined_names() -> set[str]:
